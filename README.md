@@ -1,6 +1,6 @@
 Cobaya with MGCAMB
 ===========
-This is the official repository for latest MGCAMB package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html)
+This is the official repository for the beta version of latest MGCAMB package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html)
 
 
 
@@ -13,24 +13,30 @@ cd MGCobaya-beta/MGCAMB
 python setup.py build
 ```
 
-Please note that MGCAMB is currently still using the pipeline of CAMB in Cobaya runs, so you need to specify the path of your MGCAMB installation under the theory/camb block in your input.yaml file, using:
+Besides, since there is no MG counterpart of Halofit, nonlinear corrections should be turned off when running Cobaya. You need to replace some DES 1YR dataset files with:
 ```bash
-path: /path/to/MGCobaya-beta/MGCAMB
-```
-
-Besides, since there is no MG counterpart of Halofit, nonlinear corrections should be turned off when using MGCosmoMC. You need to replace some DES 1YR dataset files with:
-```bash
-cp /path/to/MGCobaya-beta/des_data/*  /path/to/packages/data/des_data/
+cp /path/to/Cobaya_MGCAMB/des_data/*  /path/to/packages/data/des_data/
 ```
 where /path/to/packages is the default directory you install all other cosmological codes and data working for Cobaya. 
 
-Besides, in /path/to/source/cobaya/likelihoods/base_classes/des.py, be sure to set
+Moreover, in /path/to/source/cobaya/likelihoods/base_classes/des.py, be sure to set
 ```bash
 "nonlinear": False
 ```
-in "Pk_interpolator" within function "get_requirements", which is to declare to use linear calculations only. And add "nonlinear=False" argument into "self.provider.get_Pk_interpolator" under "logp" function, in order to satisfy the linear calculation requirement. 
+in dict "Pk_interpolator" within function "get_requirements", which declares to use linear calculations only. And add "nonlinear=False" argument into "self.provider.get_Pk_interpolator" within "logp" function, in order to satisfy the linear calculation requirement. 
 
-To run Cobaya MGCAMB, you need to create an input yaml file including MG parameters adopted by MGCAMB models. You could refer to the template.yaml and modify it according to which models you want to use. Please refer to params_MG.ini for the description of MG model parameters. 
+## How to run:
+To run Cobaya with MGCAMB, you need to create an input yaml file including MG parameters adopted by MGCAMB models. You could refer to the provided temp.yaml and modify it according to which models you want to work with. Please refer to params_MG.ini for the description of MG model parameters, and also the [instructions on Cobaya website](https://cobaya.readthedocs.io/en/latest/input.html) for complete instructions.
 
+Please note that MGCAMB is currently still using the pipeline of CAMB in Cobaya runs, so you need to specify the path of your MGCAMB installation under the theory/camb block in your_input.yaml file, using:
+```bash
+path: /path/to/Cobaya_MGCAMB/MGCAMB
+```
+Besides, if using DE_model = 1(wCDM), be sure to set [dark_energy_model: 'fluid'] in your_input.yaml; and if using DE_model = 2((w0,wa)CDM), be sure to set [dark_energy_model: 'ppf'] in your_input.yaml.
+In general, the way to run Cobaya with MGCAMB is the same as the other theory packages(CAMB, CLASS), thus simply use:
+
+cobaya-run your_input.yaml
+
+Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/latest/cosmo_basic_runs.html) for more details of settings for cosmological runs.
 
 
