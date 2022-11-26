@@ -1,6 +1,6 @@
 theory:
   camb:
-    path: /path/to/Cobaya_MGCAMB/MGCAMB
+    path: /path/to/MGCobaya-beta/MGCAMB
     extra_args:
       halofit_version: mead
       bbn_predictor: PArthENoPE_880.2_standard.dat

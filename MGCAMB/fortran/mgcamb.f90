@@ -403,10 +403,14 @@ contains
             !> adding the massive neutrinos contibutions, but no DE parts
             !fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
             !    & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t )) 
-
-            fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
-                & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ) &
-				& + 3._dl * (mg_cache%grhov_t + mg_cache%gpresv_t ))
+            if(MG_flag == 1) then
+                fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
+                    & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ) &
+                    & + 3._dl * (mg_cache%grhov_t + mg_cache%gpresv_t ))
+            else
+                fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
+                    & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ))
+            end if
             !> adding massive neutrinos contributions
 
             f1 = mg_cache%k2+3._dl*( mg_cache%adotoa**2 - mg_cache%Hdot )  
@@ -421,10 +425,15 @@ contains
             !term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
             !        & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t) ) &
             !        & - 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))  
-
-            term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
-                    & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t)  &
-                    & + (mg_cache%grhov_t + mg_cache%gpresv_t))- 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))  
+            if(MG_flag == 1) then
+                term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
+                        & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t)  &
+                        & + (mg_cache%grhov_t + mg_cache%gpresv_t))- 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))  
+            else
+                term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
+                    & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t) ) &
+                    & - 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))
+            end if
 
             term3= (mg_cache%mu * ( mg_cache%gamma -1._dl)* mg_cache%adotoa - mg_cache%gamma*mg_cache%mudot &
                     & - mg_cache%gammadot*mg_cache%mu )*mg_cache%rhoDelta  
@@ -532,8 +541,14 @@ contains
 
         else if ( MG_flag == 5 )  then
 
-            fs = mg_cache%k2+0.5d0*(2._dl*mg_cache%BigSigma - mg_cache%mu)*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
-                & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t )) 
+			if(test_flag ==1) then
+				fs = mg_cache%k2+0.5d0*(2._dl*mg_cache%BigSigma - mg_cache%mu)*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
+					& + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ) &
+					& + 3._dl * (mg_cache%grhov_t + mg_cache%gpresv_t )) 
+			else
+                fs = mg_cache%k2+0.5d0*(2._dl*mg_cache%BigSigma - mg_cache%mu)*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
+                    & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t )) 
+            end if
 
             f1 = mg_cache%k2+3._dl*( mg_cache%adotoa**2 - mg_cache%Hdot )  
 
@@ -542,9 +557,15 @@ contains
             term2 = mg_cache%rhoDelta*(2._dl*mg_cache%adotoa*(mg_cache%BigSigma - mg_cache%mu) &
                      - (2._dl*mg_cache%BigSigmadot - mg_cache%mudot))
 
-            term3 = mg_cache%k2*mg_cache%MG_alpha*((2._dl*mg_cache%BigSigma - mg_cache%mu)*( mg_cache%grhoc_t+mg_cache%grhob_t &
-                    & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t)) &
-                    & - 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))
+			if(test_flag ==1) then
+				term3 = mg_cache%k2*mg_cache%MG_alpha*((2._dl*mg_cache%BigSigma - mg_cache%mu)*( mg_cache%grhoc_t+mg_cache%grhob_t &
+						& +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t) &
+						& + (mg_cache%grhov_t + mg_cache%gpresv_t))- 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))
+			else
+                term3 = mg_cache%k2*mg_cache%MG_alpha*((2._dl*mg_cache%BigSigma - mg_cache%mu)*( mg_cache%grhoc_t+mg_cache%grhob_t &
+                        & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t)) &
+                        & - 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))
+            end if
 
             term4 =  - 2._dl*(mg_cache%BigSigma - mg_cache%mu)*mg_cache%pidot_sum
 
@@ -1947,6 +1968,8 @@ contains
         real(dl) :: a   !< scale factor
 		real(dl) :: w
 
+        w = -1._dl
+        
 		if ( DE_model == 0 ) then
 			w = -1._dl
 		else if(DE_model == 1) then
