@@ -38,10 +38,11 @@ path: /path/to/MGCobaya-beta/MGCAMB
 ```
 Besides, if using DE_model = 1(wCDM), be sure to set [dark_energy_model: 'fluid'] in your_input.yaml; and if using DE_model = 2((w0,wa)CDM), be sure to set [dark_energy_model: 'ppf'] in your_input.yaml.
 In general, the way to run Cobaya with MGCAMB is the same as the other theory packages(CAMB, CLASS), thus simply use:
-
+```bash
 cobaya-run your_input.yaml
-
+```
 Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/latest/cosmo_basic_runs.html) for more details of settings for cosmological runs.
+
 
 
 
