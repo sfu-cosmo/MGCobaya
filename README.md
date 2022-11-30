@@ -44,3 +44,7 @@ cobaya-run your_input.yaml
 Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/latest/cosmo_basic_runs.html) for more details of settings for cosmological runs.
 
 
+
+The repository is created by Zhuangfei Wang. If you find any bugs or problems, please contact Zhuangfei Wang at zhuangfei_wang@sfu.ca.
+
+
