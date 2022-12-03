@@ -2200,10 +2200,6 @@ contains
 				stop 'Choose MG_flag properly!'
 			end if
 		end if
-!!test
-write(*,*) "MG_flag in Fortran core:", MG_flag
-write(*,*) "QSA_flag in Fortran core:", QSA_flag
-write(*,*) "DE_model in Fortran core:", DE_model
     end subroutine MGCAMB_read_in_MGparams  
 
     ! ---------------------------------------------------------------------------------------------
