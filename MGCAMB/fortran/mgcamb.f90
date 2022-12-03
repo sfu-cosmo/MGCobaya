@@ -2104,28 +2104,51 @@ contains
 				if ( DE_model /= 0 .and. DE_model /=1 .and. DE_model /= 2 .and. DE_model /= 3) then
 					stop 'Choose DE_model properly!'
 				end if
+
 			else if ( MG_flag == 2 ) then
 				if ( DE_model /= 0 ) then
 					stop 'Choose DE_model properly!'
 				end if
+
 			else if ( MG_flag == 3) then
 				if ( QSA_flag > 4 .or. QSA_flag < 1 ) then
 					stop 'Choose QSA_flag properly!'
 				end if
+				if ( QSA_flag ==  1 ) then
+					B1 = 4._dl/3._dl
+					lambda1_2= CP%B0 ! it is considered as the B0 parameter here
+					lambda1_2 = (lambda1_2*(299792458.d-3)**2)/(2._dl*mgcamb_par_cache%H0**2)
+					B2 = 0.5d0
+					lambda2_2 = B1* lambda1_2
+					ss = 4._dl
+				else if( QSA_flag ==  2 ) then
+					GRtrans = a_star
+				else if ( QSA_flag ==  4 ) then
+					beta0 = 1._dl/sqrt(6._dl)
+				end if
+
 				if ( DE_model /= 0 ) then
 					stop 'Choose DE_model properly!'
 				end if
+
 			else if ( MG_flag == 4) then
 				if(CDM_flag == 1) then
 					if ( QSA_flag > 4 .or. QSA_flag < 2 ) then
 						stop 'Choose QSA_flag properly!'
 					end if
+					if( QSA_flag ==  2 ) then
+						GRtrans = a_star
+					else if ( QSA_flag ==  4 ) then
+						beta0 = 1._dl/sqrt(6._dl)
+					end if
 				else
 					stop 'Please choose CDM_flag properly'
 				end if
+
 				if ( DE_model /= 0 ) then
 					stop 'Choose DE_model properly!'
 				end if
+
 			else if ( MG_flag == 5) then
 				if( test_flag== 1) then
 					if( pure_MG_flag /= 1 .and. pure_MG_flag /= 2) then
@@ -2134,17 +2157,33 @@ contains
 					if ( DE_model /= 0 .and. DE_model /=1 .and. DE_model /= 2 .and. DE_model /= 3) then
 						stop 'Choose DE_model properly!'
 					end if
+
 				else if(test_flag==2) then
 					if ( DE_model /= 0 ) then
 						stop 'Choose DE_model properly!'
 					end if
+
 				else if(test_flag==3) then
 					if ( QSA_flag > 4 .or. QSA_flag < 1 ) then
 						 stop 'Choose QSA_flag properly!'
 					end if
+					if ( QSA_flag ==  1 ) then
+						B1 = 4._dl/3._dl
+						lambda1_2= CP%B0 ! it is considered as the B0 parameter here
+						lambda1_2 = (lambda1_2*(299792458.d-3)**2)/(2._dl*mgcamb_par_cache%H0**2)
+						B2 = 0.5d0
+						lambda2_2 = B1* lambda1_2
+						ss = 4._dl
+					else if( QSA_flag ==  2 ) then
+						GRtrans = a_star
+					else if ( QSA_flag ==  4 ) then
+						beta0 = 1._dl/sqrt(6._dl)
+					end if
+
 					if ( DE_model /= 0 ) then
 						stop 'Choose DE_model properly!'
 					end if
+
 				else if(test_flag==4) then
 					if ( DE_model /=1 .and. DE_model /= 2 .and. DE_model /= 3) then
 						stop 'Choose DE_model properly!'
@@ -2152,6 +2191,7 @@ contains
 				else
 					stop 'Please write your own model'
 				end if
+
 			else if ( MG_flag == 6 ) then
 				if ( DE_model /=1 .and. DE_model /= 2 .and. DE_model /= 3) then
 					stop 'Choose DE_model properly!'
@@ -2160,7 +2200,10 @@ contains
 				stop 'Choose MG_flag properly!'
 			end if
 		end if
-
+!!test
+write(*,*) "MG_flag in Fortran core:", MG_flag
+write(*,*) "QSA_flag in Fortran core:", QSA_flag
+write(*,*) "DE_model in Fortran core:", DE_model
     end subroutine MGCAMB_read_in_MGparams  
 
     ! ---------------------------------------------------------------------------------------------
