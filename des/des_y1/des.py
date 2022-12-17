@@ -398,7 +398,6 @@ class DES(DataSetLikelihood):
         self.zs_interp = np.linspace(0, self.zmax, 100)
 
     def get_requirements(self):
-        print('this is called...')
         return {
             "H0": None,
             "omegam": None,
