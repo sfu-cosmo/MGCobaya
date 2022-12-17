@@ -283,22 +283,6 @@
     this%is_cosmological_constant = .not. this%use_tabulated_w .and. &
         &  abs(this%w_lam + 1._dl) < 1.e-6_dl .and. this%wa==0._dl
 
-	!> MGCAMB MOD START
-!	write(*,*) 'reading MG parameters...'
-!	call MGCAMB_read_in_MGparams(State%CP)
-!	write(*,*) 'MG_flag:', MG_flag
-!	write(*,*) 'pure_MG_flag', pure_MG_flag
-!	write(*,*) 'DE_model:', DE_model
-!	write(*,*) 'E11:', E11
-!	write(*,*) 'E22:', E22
-!	write(*,*) 'Funcofw_5:', State%CP%Funcofw_5
-!	write(*,*) 'reading done'
-!	if (MG_flag == 1 .or. MG_flag == 6) then
-!		call reconstruction_arr
-!        write(*,*) 'X_arr',X_arr(1:10)
-!        write(*,*) 'recon done'
-!	end if
-	!< MGCAMB MOD END
     end subroutine TDarkEnergyEqnOfState_Init
 
 
