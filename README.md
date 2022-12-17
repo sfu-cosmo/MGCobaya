@@ -15,19 +15,14 @@ python setup.py build
 
 Besides, since there is no MG counterpart of Halofit, nonlinear corrections should be turned off when running Cobaya. You need to replace some DES 1YR dataset files with:
 ```bash
-cp /path/to/MGCobaya-beta/des_data/*  /path/to/packages/data/des_data/
+cp /path/to/MGCobaya-beta/des/des_data/*  /path/to/packages/data/des_data/
 ```
 where /path/to/packages is the default directory you install all other cosmological codes and data working for Cobaya. 
 
-Moreover, in /path/to/source/cobaya/likelihoods/base_classes/des.py, be sure to set
+Moreover, if you want to use DES likelihoods, make sure to set the path under the block of DES likelihoods in your_input.yaml:
 ```bash
-"nonlinear": False
+python_path: /path/to/MGCobaya-beta/des
 ```
-in dict "Pk_interpolator" within function "get_requirements", which declares to use linear calculations only. And add argument:
- ```bash 
- nonlinear=False 
- ``` 
- into "self.provider.get_Pk_interpolator" for both "PKdelta" and "PKWeyl" within "logp" function, in order to satisfy the linear calculation requirement. 
 
 ## How to run:
 To run Cobaya with MGCAMB, you need to create an input yaml file including MG parameters adopted by MGCAMB models. You could refer to the provided temp.yaml and modify it according to which models you want to work with. Please refer to params_MG.ini for the description of MG model parameters, and also the [instructions on Cobaya website](https://cobaya.readthedocs.io/en/latest/input.html) for complete instructions.
@@ -46,6 +41,6 @@ Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/lates
 
 
 
-The repository is created by Zhuangfei Wang. If you find any bugs or problems, please contact Zhuangfei Wang at zhuangfei_wang@sfu.ca.
+The repository is created and maintained by Zhuangfei Wang. If you find any bugs or problems, please contact Zhuangfei Wang at zhuangfei_wang@sfu.ca.
 
 

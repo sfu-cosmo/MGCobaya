@@ -26,7 +26,8 @@ likelihood:
   planck_2018_lowl.EE: null
   planck_2018_highl_plik.TTTEEE: null
   planck_2018_lensing.clik: null
-  des_y1.joint: null 
+  des_y1.joint:
+    python_path: /path/to/MGCobaya-beta/des 
 params:
   logA:
     prior:
