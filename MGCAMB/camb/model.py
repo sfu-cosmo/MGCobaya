@@ -603,10 +603,10 @@ class CAMBparams(F2003Class):
         return self
 
 #MGCAMB MOD START
-    def set_mgparams(self, MG_flag= 0, GRtrans =  0.5, pure_MG_flag = 1, alt_MG_flag = 1, QSA_flag = 1, CDM_flag = 1, test_flag = 1,
+    def set_mgparams(self, MG_flag= 0, GRtrans =  0.001, pure_MG_flag = 1, alt_MG_flag = 1, QSA_flag = 1, CDM_flag = 1, test_flag = 1,
 						mugamma_par = 1, B1 = 1.333, lambda1_2  = 1000, B2 = 0.5, lambda2_2 = 1000, ss = 4, E11 = 1.0, E22 = 1.0,
 						ga = 0.5, nn = 2, musigma_par = 1, mu0 =0.0, sigma0 = 0, QR_par = 1, MGQfix = 1, MGRfix = 1, Qnot = 1.0,
-						Rnot= 1.0, sss = 0, Linder_gamma = 0.545, B0 = 0.001, beta_star = 1.0, a_star = 0.5, lambda_star = 10.0,
+						Rnot= 1.0, sss = 0, Linder_gamma = 0.545, B0 = 0.001, beta_star = 1.0, a_star = 0.5, xi_star = 0.001,
 						beta0 = 0.0, xi0 = 0.0001, DilS = 0.24, DilR = 1.0, F_R0 = 0.0001, FRn = 1.0, C_mu0 = 0, C_theta0 = 0,
 						C_Gamma0 = 0.0,  DE_model = 1, w0DE = -1.0, waDE = 0.0, MGCAMB_Mu_idx_1 = 1.0, MGCAMB_Mu_idx_2 = 1.0, 
 						MGCAMB_Mu_idx_3 = 1.0,MGCAMB_Mu_idx_4 = 1.0,MGCAMB_Mu_idx_5 = 1.0,MGCAMB_Mu_idx_6 = 1.0,MGCAMB_Mu_idx_7 = 1.0,
@@ -641,7 +641,7 @@ class CAMBparams(F2003Class):
         self.Rnot = Rnot
         self.sss = sss
         self.Linder_gamma = Linder_gamma    
-        self.lambda_star = lambda_star 
+        self.xi_star = xi_star 
         self.beta_star = beta_star
         self.a_star  = a_star
         self.beta0 = beta0
