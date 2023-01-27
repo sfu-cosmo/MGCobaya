@@ -576,7 +576,7 @@
     !Dark energy
 	!> MGCAMB MOD START: 
     if ((.not. CP%DarkEnergy%is_cosmological_constant .and. MG_flag == 0) &
- 		.or. (.not. MGDE_const .and. MG_flag /= 0)) then
+ 		.or. (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
         EV%w_ix = neq + 1
         neq = neq + CP%DarkEnergy%num_perturb_equations
         maxeq = maxeq + CP%DarkEnergy%num_perturb_equations
@@ -2428,7 +2428,7 @@
         dgq = dgq + dgq_de
     end if
 
-    if (.not. MGDE_const .and. MG_flag /= 0)  then
+    if (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)  then
         call State%CP%DarkEnergy%PerturbedStressEnergy(dgrho_de, dgq_de, &
             a, dgq, dgrho, grho, grhov_t, w_MGDE, gpres_noDE, etak, &
             adotoa, k, 1.d0, ay, ayprime, EV%w_ix)
@@ -2662,7 +2662,7 @@
         call State%CP%DarkEnergy%PerturbationEvolve(ayprime, w_dark_energy_t, &
         EV%w_ix, a, adotoa, k, z, ay)
 
-    if (.not. MGDE_const .and. MG_flag /= 0 ) &
+    if (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert) &
         call State%CP%DarkEnergy%PerturbationEvolve(ayprime, w_MGDE, &
         EV%w_ix, a, adotoa, k, z, ay)
     !< MGCAMB MOD END
@@ -3080,7 +3080,7 @@
         end if
         !>MGCAMB MOD START
         if ((EV%is_cosmological_constant .and. MG_flag == 0) &
- 		    .or. ( MGDE_const .and. MG_flag /= 0)) then
+ 		    .or. ( MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
 
             dgrho_de=0
             dgq_de=0
@@ -3109,7 +3109,7 @@
                 State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
                 gpres, w_dark_energy_t, State%grhok, adotoa, &
                 EV%kf(1), k, grhov_t, z, k2, ayprime, ay, EV%w_ix)
-        else if(MG_flag /= 0 .and. (.not. MGDE_const)) then
+        else if(MG_flag /= 0 .and. (.not. MGDE_const) .and. MGDE_pert) then
 			diff_rhopi = pidot_sum - (4*dgpi+ dgpi_diff)*adotoa + &
 				State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
 				gpres, w_MGDE, State%grhok, adotoa, &
@@ -3233,8 +3233,8 @@
                 ! compute MG ISW
                 call MGCAMB_compute_ISW( a, mgcamb_par_cache, mgcamb_cache )
 
-                ISW = exptau * (mgcamb_cache%MG_ISW - 2._dl*MGDE_ISW)
-				phidot = (mgcamb_cache%MG_ISW - 2._dl*MGDE_ISW)/2._dl
+                ISW = exptau * (mgcamb_cache%MG_ISW - MGDE_ISW/k2)
+				phidot = (mgcamb_cache%MG_ISW - MGDE_ISW/k2)/2._dl
 
                 sigmadot = mgcamb_cache%sigmadot
 

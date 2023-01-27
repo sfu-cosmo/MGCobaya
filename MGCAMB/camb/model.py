@@ -278,6 +278,7 @@ class CAMBparams(F2003Class):
         ("DE_model", c_int, "DE_model"),
         ("w0DE", c_double, "w0DE"),
         ("waDE", c_double, "waDE"),
+        ("MGDE_pert", c_bool, "MGDE_pert"),
 		("MGCAMB_Mu_idx_1", c_double, "MGCAMB_Mu_idx(1)"),
 		("MGCAMB_Mu_idx_2", c_double, "MGCAMB_Mu_idx(2)"),
 		("MGCAMB_Mu_idx_3", c_double, "MGCAMB_Mu_idx(3)"),
@@ -608,7 +609,7 @@ class CAMBparams(F2003Class):
 						ga = 0.5, nn = 2, musigma_par = 1, mu0 =0.0, sigma0 = 0, QR_par = 1, MGQfix = 1, MGRfix = 1, Qnot = 1.0,
 						Rnot= 1.0, sss = 0, Linder_gamma = 0.545, B0 = 0.001, beta_star = 1.0, a_star = 0.5, xi_star = 0.001,
 						beta0 = 0.0, xi0 = 0.0001, DilS = 0.24, DilR = 1.0, F_R0 = 0.0001, FRn = 1.0, 
-						DE_model = 0, w0DE = -1.0, waDE = 0.0, MGCAMB_Mu_idx_1 = 1.0, MGCAMB_Mu_idx_2 = 1.0, 
+						DE_model = 0, w0DE = -1.0, waDE = 0.0, MGDE_pert = False, MGCAMB_Mu_idx_1 = 1.0, MGCAMB_Mu_idx_2 = 1.0, 
 						MGCAMB_Mu_idx_3 = 1.0,MGCAMB_Mu_idx_4 = 1.0,MGCAMB_Mu_idx_5 = 1.0,MGCAMB_Mu_idx_6 = 1.0,MGCAMB_Mu_idx_7 = 1.0,
 						MGCAMB_Mu_idx_8 = 1.0,MGCAMB_Mu_idx_9 = 1.0,MGCAMB_Mu_idx_10 = 1.0,MGCAMB_Mu_idx_11 = 1.0,MGCAMB_Sigma_idx_1 = 1.0,
 						MGCAMB_Sigma_idx_2 = 1.0,MGCAMB_Sigma_idx_3 = 1.0,MGCAMB_Sigma_idx_4 = 1.0,MGCAMB_Sigma_idx_5 = 1.0,
@@ -655,10 +656,8 @@ class CAMBparams(F2003Class):
         self.ga = ga
         self.nn = nn
         self.w0DE = w0DE    
-        self.waDE = waDE      
-        self.C_theta0 = C_theta0
-        self.C_Gamma0 = C_Gamma0
-        self.C_mu0 = C_mu0
+        self.waDE = waDE   
+        self.MGDE_pert = MGDE_pert   
         self.MGCAMB_Mu_idx_1 =  MGCAMB_Mu_idx_1
         self.MGCAMB_Mu_idx_2 =  MGCAMB_Mu_idx_2
         self.MGCAMB_Mu_idx_3 =  MGCAMB_Mu_idx_3

@@ -70,6 +70,7 @@ module MGCAMB
     real(dl) :: waDE              !< waDE parameters for DE
 
 	logical :: MGDE_const = .True.
+    logical :: MGDE_pert = .False.
 
     character(len=(10)) :: MGCAMB_version = 'v 4.0'
 
@@ -403,7 +404,7 @@ contains
             !> adding the massive neutrinos contibutions, but no DE parts
             !fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
             !    & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t )) 
-            if(MG_flag == 1) then
+            if(MG_flag == 1 .and. MGDE_pert) then
                 fmu = mg_cache%k2+0.5d0*mg_cache%gamma*mg_cache%mu*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
                     & + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ) &
                     & + 3._dl * (mg_cache%grhov_t + mg_cache%gpresv_t ))
@@ -425,7 +426,7 @@ contains
             !term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
             !        & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t) ) &
             !        & - 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))  
-            if(MG_flag == 1) then
+            if(MG_flag == 1 .and. MGDE_pert) then
                 term2 = mg_cache%k2*mg_cache%MG_alpha* (mg_cache%mu* mg_cache%gamma*( mg_cache%grhoc_t+mg_cache%grhob_t   &
                         & +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t)  &
                         & + (mg_cache%grhov_t + mg_cache%gpresv_t))- 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))  
@@ -541,7 +542,7 @@ contains
 
         else if ( MG_flag == 5 )  then
 
-			if(test_flag ==1) then
+			if(test_flag ==1 .and. MGDE_pert) then
 				fs = mg_cache%k2+0.5d0*(2._dl*mg_cache%BigSigma - mg_cache%mu)*(3._dl*(mg_cache%grhoc_t+mg_cache%grhob_t) &
 					& + 4._dl*(mg_cache%grhog_t+mg_cache%grhor_t) +3._dl * (mg_cache%grhonu_t + mg_cache%gpresnu_t ) &
 					& + 3._dl * (mg_cache%grhov_t + mg_cache%gpresv_t )) 
@@ -557,7 +558,7 @@ contains
             term2 = mg_cache%rhoDelta*(2._dl*mg_cache%adotoa*(mg_cache%BigSigma - mg_cache%mu) &
                      - (2._dl*mg_cache%BigSigmadot - mg_cache%mudot))
 
-			if(test_flag ==1) then
+			if(test_flag ==1 .and. MGDE_pert) then
 				term3 = mg_cache%k2*mg_cache%MG_alpha*((2._dl*mg_cache%BigSigma - mg_cache%mu)*( mg_cache%grhoc_t+mg_cache%grhob_t &
 						& +(4._dl/3._dl)*(mg_cache%grhog_t+mg_cache%grhor_t) + (mg_cache%grhonu_t + mg_cache%gpresnu_t) &
 						& + (mg_cache%grhov_t + mg_cache%gpresv_t))- 2._dl*(mg_cache%adotoa**2 - mg_cache%Hdot))
@@ -2053,6 +2054,9 @@ contains
         ! DE model parameters
         w0DE = CP%w0DE             !< w0 parameters for DE
         waDE = CP%waDE             !< waDE parameters for DE
+
+        !DE perturbations
+        MGDE_pert = CP%MGDE_pert
 
         !reconstruction model parameters
 		mu_arr(10) =  CP%MGCAMB_Mu_idx_1

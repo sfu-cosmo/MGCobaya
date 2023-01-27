@@ -20,6 +20,7 @@ theory:
       musigma_par: 1
       QR_par: 1
       DE_model: 0
+      MGDE_pert: False 
       dark_energy_model: 'ppf'
 likelihood:
   planck_2018_lowl.TT: null

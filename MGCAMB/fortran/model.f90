@@ -189,7 +189,7 @@
         Type(TCustomSourceParams) :: CustomSources
 
 		!>MGCAMB MOD START
-        integer ::  MG_flag =0  
+        integer ::  MG_flag   
 		real(dl)::  GRtrans  
         integer :: pure_MG_flag  
         integer :: alt_MG_flag 
@@ -229,6 +229,7 @@
         integer :: DE_model  
         real(dl):: w0DE 
         real(dl):: waDE
+        logical :: MGDE_pert 
         real(dl):: MGCAMB_Mu_idx_1
         real(dl):: MGCAMB_Mu_idx_2
         real(dl):: MGCAMB_Mu_idx_3
