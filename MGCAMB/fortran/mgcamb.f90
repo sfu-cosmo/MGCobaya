@@ -277,7 +277,7 @@ contains
             end if            
 
 
-        else if (MG_flag == 5)  then !generic mu-Sigma parametrization
+        else if (MG_flag == 5)  then !direct mu-Sigma parametrization
 
             mg_cache%mu         = MGCAMB_Mu( a, mg_par_cache, mg_cache )
             mg_cache%mudot      = MGCAMB_MuDot( a, mg_par_cache, mg_cache )
@@ -357,7 +357,7 @@ contains
 
             end if 
 
-        else if (MG_flag == 5) then ! generic mu-Sigma parametrization
+        else if (MG_flag == 5) then ! direct mu-Sigma parametrization
 
             mg_cache%MG_alpha = (mg_cache%etak/mg_cache%k + ((2._dl*mg_cache%BigSigma - mg_cache%mu)*mg_cache%rhoDelta &
                     +(mg_cache%BigSigma - mg_cache%mu)*2._dl* mg_cache%dgpi)/(2._dl*mg_cache%k2))/mg_cache%adotoa
@@ -796,7 +796,7 @@ contains
             end if
 
 
-        else if (MG_flag == 5) then  !generic mu-Sigma parametrization
+        else if (MG_flag == 5) then  !direct mu-Sigma parametrization
 
             if(test_flag == 1) then !pure MG models
 
@@ -1028,7 +1028,7 @@ contains
             end if
 
 
-        else if( MG_flag == 5) then ! generic mu-Sigma parametrization
+        else if( MG_flag == 5) then ! direct mu-Sigma parametrization
 
             if(test_flag == 1) then !pure MG models
 
