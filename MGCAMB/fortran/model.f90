@@ -195,7 +195,7 @@
         integer :: alt_MG_flag 
         integer ::  QSA_flag 
         integer ::  CDM_flag 
-        integer :: test_flag
+        integer :: muSigma_flag
         integer :: mugamma_par 
         real(dl):: B1
         real(dl):: lambda1_2
