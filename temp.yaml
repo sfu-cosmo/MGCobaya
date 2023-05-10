@@ -141,7 +141,7 @@ params:
     latex: '{\rm{Age}}/\mathrm{Gyr}'
   rdrag:
     latex: r_\mathrm{drag}
-  GRtrans: 0.5
+  GRtrans: 0.001
   B1: 1.333
   lambda1_2: 1000
   B2: 0.5

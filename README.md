@@ -38,9 +38,49 @@ cobaya-run your_input.yaml
 ```
 Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/latest/cosmo_basic_runs.html) for more details of settings for cosmological runs.
 
+## Citing MGCAMB
+If you use MGCAMB for your scientific work, please cite the following papers:
+
+* *New MGCAMB tests of gravity with CosmoMC and Cobaya*
+    Zhuangfei Wang, Seyed Hamidreza Mirpoorian, Levon Pogosian, Alessandra Silvestri, Gong-Bo Zhao
+    [arXiv:2305.05667 [astro-ph.CO]](https://arxiv.org/abs/2305.05667)
+
+
+* *MGCAMB with massive neutrinos and dynamical dark energy*   
+    Alex Zucca, Levon Pogosian, Alessandra Silvestri, and Gong-Bo Zhao  
+    [arXiv:1901.05956 [astro-ph.CO]](https://arxiv.org/abs/1901.05956)
+    
+    
+* *Testing Gravity with CAMB and CosmoMC*  
+    Alireza Hojjati, Levon Pogosian, Gong-Bo Zhao,  
+    [arXiv:1106.4543 [astro-ph.CO]](https://arxiv.org/abs/1106.4543), [JCAP 1108:005,2011](http://iopscience.iop.org/article/10.1088/1475-7516/2011/08/005)
+    
+    
+* *Searching for modified growth patterns with tomographic surveys*  
+    Gong-Bo Zhao, Levon Pogosian, Alessandra Silvestri, Joel Zylberberg,  
+    [arXiv:0809.3791 [astro-ph]](http://arxiv.org/abs/0809.3791), [Phys. Rev. D 79, 083513](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.79.083513)
+
+
+as well as the original CAMB [paper](http://arxiv.org/abs/astro-ph/9911177) and Cobaya[paper](https://arxiv.org/abs/2005.05290).
+
+## Authors List
+Main Developers:
+- Zhuangfei Wang (Email: zhuangfei_wang@sfu.ca)
+- Alex Zucca (Email: alexzucca90@gmail.com)
+
+Original Code Developers:
+* [Gong-Bo Zhao](http://english.nao.cas.cn/aboutus/directors/202103/t20210321_265637.html)
+* Alireza Hojjati
+* [Levon Pogosian](http://www.sfu.ca/%7Elevon/)
+* [Alessandra Silvestri](http://wwwhome.lorentz.leidenuniv.nl/%7Esilvestri/Home.html)
 
 
 
-The repository is created and maintained by Zhuangfei Wang. If you find any bugs or problems, please contact Zhuangfei Wang at zhuangfei_wang@sfu.ca.
+Repo created and maintained by Zhuangfei Wang. If you find any bugs in the code, please contact Zhuangfei Wang at zhuangfei_wang@sfu.ca .
+
+<p align="center">
+    <a href="http://www.sfu.ca/physics.html"><img src="https://www.sfu.ca/content/sfu/sfuwest/cc-2015/registration/sponsored-students/jcr:content/main_content/image_0.img.640.medium.jpg/1430033284084.jpg" width="380px" height="200px" ></a>
+    <a href="http://www.sfu.ca/physics/cosmology/"><img src="https://avatars0.githubusercontent.com/u/7880410?s=280&v=4" width="200px"></a>
+</p>
 
 
