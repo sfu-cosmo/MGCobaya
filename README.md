@@ -1,35 +1,36 @@
-Cobaya with MGCAMB
+MGCobaya
 ===========
-This is the official repository for the beta version of latest MGCAMB package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html)
+## Modified Growth with Cobaya 
+This is the official repository for the latest MGCAMB package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html).
 
 
 
 ## How to install:
-To install the MGCAMB packgage, you need: 
+To install the packgage, you need: 
 
 ```bash
-git clone https://github.com/sfu-cosmo/MGCobaya-beta.git
-cd MGCobaya-beta/MGCAMB
+git clone https://github.com/sfu-cosmo/MGCobaya.git
+cd MGCobaya/MGCAMB
 python setup.py build
 ```
 
 Besides, since there is no MG counterpart of Halofit, nonlinear corrections should be turned off when running Cobaya. You need to replace some DES 1YR dataset files with:
 ```bash
-cp /path/to/MGCobaya-beta/des/des_data/*  /path/to/packages/data/des_data/
+cp /path/to/MGCobaya/des/des_data/*  /path/to/packages/data/des_data/
 ```
 where /path/to/packages is the default directory you install all other cosmological codes and data working for Cobaya. 
 
 Moreover, if you want to use DES likelihoods, make sure to set the path under the block of DES likelihoods in your_input.yaml:
 ```bash
-python_path: /path/to/MGCobaya-beta/des
+python_path: /path/to/MGCobaya/des
 ```
 
 ## How to run:
-To run Cobaya with MGCAMB, you need to create an input yaml file including MG parameters adopted by MGCAMB models. You could refer to the provided temp.yaml and modify it according to which models you want to work with. Please refer to params_MG.ini for the description of MG model parameters, and also the [instructions on Cobaya website](https://cobaya.readthedocs.io/en/latest/input.html) for complete instructions.
+To run Cobaya with MGCAMB, you need to create an input yaml file including MG parameters adopted by MGCAMB models. The provided temp.yaml could be a useful template to modify according to which model you want to work with. Please refer to params_MG.ini for the description of MG model parameters, [MGCAMB page](https://github.com/sfu-cosmo/MGCAMB) for a structure of the models, and also the [instructions on Cobaya website](https://cobaya.readthedocs.io/en/latest/input.html) for complete instructions on running Cobaya. 
 
 Please note that MGCAMB is currently still using the pipeline of CAMB in Cobaya runs, so you need to specify the path of your MGCAMB installation under the theory/camb block in your_input.yaml file, using:
 ```bash
-path: /path/to/MGCobaya-beta/MGCAMB
+path: /path/to/MGCobaya/MGCAMB
 ```
 Besides, if using DE_model = 1(wCDM), be sure to set [dark_energy_model: 'fluid'] in your_input.yaml; and if using DE_model = 2((w0,wa)CDM), be sure to set [dark_energy_model: 'ppf'] in your_input.yaml.
 In general, the way to run Cobaya with MGCAMB is the same as the other theory packages(CAMB, CLASS), thus simply use:
@@ -38,11 +39,11 @@ cobaya-run your_input.yaml
 ```
 Please refer to [official Cobaya website](https://cobaya.readthedocs.io/en/latest/cosmo_basic_runs.html) for more details of settings for cosmological runs.
 
-## Citing MGCAMB
-If you use MGCAMB for your scientific work, please cite the following papers:
+## Citing MGCobaya
+If you use MGCobaya for your scientific work, please cite the following papers:
 
-* *New MGCAMB tests of gravity with CosmoMC and Cobaya*
-    Zhuangfei Wang, Seyed Hamidreza Mirpoorian, Levon Pogosian, Alessandra Silvestri, Gong-Bo Zhao
+* *New MGCAMB tests of gravity with CosmoMC and Cobaya*\
+    Zhuangfei Wang, Seyed Hamidreza Mirpoorian, Levon Pogosian, Alessandra Silvestri, Gong-Bo Zhao\
     [arXiv:2305.05667 [astro-ph.CO]](https://arxiv.org/abs/2305.05667)
 
 
@@ -61,7 +62,7 @@ If you use MGCAMB for your scientific work, please cite the following papers:
     [arXiv:0809.3791 [astro-ph]](http://arxiv.org/abs/0809.3791), [Phys. Rev. D 79, 083513](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.79.083513)
 
 
-as well as the original CAMB [paper](http://arxiv.org/abs/astro-ph/9911177) and Cobaya[paper](https://arxiv.org/abs/2005.05290).
+as well as the original CAMB [paper](http://arxiv.org/abs/astro-ph/9911177) and Cobaya [paper](https://arxiv.org/abs/2005.05290).
 
 ## Authors List
 Main Developers:
