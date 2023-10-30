@@ -31,6 +31,7 @@
     use MathUtils
     use config
     use model
+    use splines
     implicit none
     public
 
@@ -96,7 +97,7 @@
 
     !Sources
     Type CalWins
-        real(dl), allocatable :: awin_lens(:),  dawin_lens(:)
+        real(dl), allocatable :: awin_lens(:), dawin_lens(:)
     end Type CalWins
 
     Type LimberRec
@@ -308,9 +309,9 @@
     subroutine CAMBdata_SetParams(this, P, error, DoReion, call_again, background_only)
     !Initialize background variables; does not yet calculate thermal history
     use constants
-	!MGCAMB MOD START
+    !>MGCAMB MOD START
     use MGCAMB
-	!MGCAMB MOD END
+    !> MGCAMB MOD END
     class(CAMBdata), target :: this
     type(CAMBparams), intent(in) :: P
     real(dl) fractional_number, conv
@@ -462,15 +463,25 @@
         this%grhov=this%grhocrit*this%Omega_de
 
         !> MGCAMB MOD START
-        mgcamb_par_cache%omegav = this%Omega_de
-        call MGCAMB_read_in_MGparams(P)
-	    if (MG_flag == 1 .or. MG_flag == 5 .or. MG_flag == 6) then
+		mgcamb_par_cache%omegav = this%Omega_de
+        
+        !fix last node of X_arr when running from fortran 
+        if(.not. P%MG_wrapped) then
+            if(DE_model == 3) then 
+                X_arr(2*nnode) = mgcamb_par_cache%omegav
+            end if 
+        end if
+
+        if(P%MG_wrapped) then
+            call MGCAMB_read_in_MGparams(P)
+        end if 
+        if (MG_flag == 1 .or. MG_flag == 5 .or. MG_flag == 6) then
             call reconstruction_arr
         end if
         if(MG_flag /= 0) then
             call MGCAMB_DE_perturb
         end if
-
+		!> MGCAMB MOD END
 
         !  adotrad gives da/dtau in the asymptotic radiation-dominated era:
         this%adotrad = sqrt((this%grhog+this%grhornomass+sum(this%grhormass(1:this%CP%Nu_mass_eigenstates)))/3)
@@ -620,7 +631,7 @@
 
     end function CAMBdata_DeltaTime
 
-    subroutine CAMBdata_DeltaTimeArr(this, arr,  a1, a2, n, tol)
+    subroutine CAMBdata_DeltaTimeArr(this, arr, a1, a2, n, tol)
     class(CAMBdata) :: this
     integer, intent(in) :: n
     real(dl), intent(out) :: arr(n)
@@ -644,7 +655,7 @@
     CAMBdata_TimeOfz= this%DeltaTime(0._dl,1._dl/(z+1._dl), tol)
     end function CAMBdata_TimeOfz
 
-    subroutine CAMBdata_TimeOfzArr(this, arr,  z, n, tol)
+    subroutine CAMBdata_TimeOfzArr(this, arr, z, n, tol)
     !z array must be monotonically *decreasing* so times increasing
     class(CAMBdata) :: this
     integer, intent(in) :: n
@@ -685,7 +696,7 @@
     CAMBdata_DeltaPhysicalTimeGyr = Integrate_Romberg(this, dtda,a1,a2,atol)*Mpc/c/Gyr
     end function CAMBdata_DeltaPhysicalTimeGyr
 
-    subroutine CAMBdata_DeltaPhysicalTimeGyrArr(this, arr,  a1, a2, n, tol)
+    subroutine CAMBdata_DeltaPhysicalTimeGyrArr(this, arr, a1, a2, n, tol)
     class(CAMBdata) :: this
     integer, intent(in) :: n
     real(dl), intent(out) :: arr(n)
@@ -751,9 +762,9 @@
 
     subroutine CAMBdata_AngularDiameterDistance2Arr(this, arr, z1, z2, n)
     class(CAMBdata) :: this
+    integer, intent(in) :: n
     real(dl), intent(out) :: arr(n)
     real(dl), intent(in) :: z1(n), z2(n)
-    integer, intent(in) :: n
     integer i
 
     !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC)
@@ -1342,7 +1353,7 @@
     class(lSamples) :: this
     class(CAMBdata), target :: State
     integer, intent(IN) :: lmin,max_l
-    integer lind, lvar, step, top, bot
+    integer lind, lvar, step, top, bot, lmin_log
     integer, allocatable :: ls(:)
     real(dl) AScale
 
@@ -1350,6 +1361,7 @@
     if (allocated(this%l)) deallocate(this%l)
     this%lmin = lmin
     this%use_spline_template = State%CP%use_cl_spline_template
+    lmin_log = State%CP%min_l_logl_sampling
     associate(Accuracy => State%CP%Accuracy)
         Ascale=State%scale/Accuracy%lSampleBoost
 
@@ -1470,14 +1482,14 @@
                         step=max(nint(50*Ascale),7)
                     end if
                     bot=ls(lind)+step
-                    top=min(5000,max_l)
+                    top=min(lmin_log,max_l)
 
                     do lvar = bot,top,step
                         lind=lind+1
                         ls(lind)=lvar
                     end do
 
-                    if (max_l > 5000) then
+                    if (max_l > lmin_log) then
                         !Should be pretty smooth or tiny out here
                         step=max(nint(400*Ascale),50)
                         lvar = ls(lind)
@@ -1501,7 +1513,7 @@
                     lind=lind+1
                     ls(lind)=max_l
                 end if
-                if (.not. State%flat .and. max_l<=5000) ls(lind-1)=int(max_l+ls(lind-2))/2
+                if (.not. State%flat .and. max_l<=lmin_log) ls(lind-1)=int(max_l+ls(lind-2))/2
                 !Not in flat case so interpolation table is the same when using lower l_max
             end if
         end if
@@ -1513,14 +1525,13 @@
 
     subroutine InterpolateClArr(lSet,iCl, all_Cl, max_index)
     class(lSamples), intent(in) :: lSet
-    real(dl), intent(in) :: iCl(*)
+    real(dl), intent(in) :: iCl(1:*)
     real(dl), intent(out):: all_Cl(lSet%lmin:*)
     integer, intent(in), optional :: max_index
     integer il,llo,lhi, xi
     real(dl) ddCl(lSet%nl)
     real(dl) xl(lSet%nl)
     real(dl) a0,b0,ho
-    real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
     integer max_ind
 
     max_ind = PresentDefault(lSet%nl, max_index)
@@ -1528,7 +1539,7 @@
     if (max_ind > lSet%nl) call MpiStop('Wrong max_ind in InterpolateClArr')
 
     xl = real(lSet%l(1:lSet%nl),dl)
-    call spline(xl,iCL(1),max_ind,cllo,clhi,ddCl(1))
+    call spline_def(xl,iCL,max_ind,ddCl)
 
     llo=1
     do il=lSet%lmin,lSet%l(max_ind)
@@ -2342,7 +2353,7 @@
 
                 if (Win%kind /= window_lensing  .and. &
                     Win%tau_peakend-Win%tau_peakstart < nint(60*TimeSampleBoost) * delta) then
-                    call TimeSteps%Add(Win%tau_peakstart,Win%tau_peakend,  nint(60*TimeSampleBoost))
+                    call TimeSteps%Add(Win%tau_peakstart,Win%tau_peakend, nint(60*TimeSampleBoost))
                     !This should be over peak
                 end if
             end associate
@@ -2402,7 +2413,7 @@
     class(CAMBdata) :: State
     Type(TRanges) :: TimeSteps
     integer i, j, jstart, ix
-    real(dl) tau,  a, a2
+    real(dl) tau, a, a2
     real(dl) Tspin, Trad, rho_fac, tau_eps
     real(dl) window, winamp
     real(dl) z,rhos, adot, exp_fac
@@ -2521,38 +2532,39 @@
         associate (RedWin => State%Redshift_W(i))
 
             ! int (a*rho_s/H)' a W_f(a) d\eta, or for counts int g/chi deta
-            call spline(TimeSteps%points(jstart),int_tmp(jstart,i),ninterp,spl_large,spl_large,tmp)
-            call spline_integrate(TimeSteps%points(jstart),int_tmp(jstart,i),tmp, tmp2(jstart),ninterp)
+            call spline_def(TimeSteps%points(jstart:),int_tmp(jstart:,i),ninterp,tmp)
+            call spline_integrate(TimeSteps%points(jstart:),int_tmp(jstart:,i),tmp, tmp2(jstart:),ninterp)
             RedWin%WinV(jstart:TimeSteps%npoints) =  &
                 RedWin%WinV(jstart:TimeSteps%npoints) + tmp2(jstart:TimeSteps%npoints)
 
-            call spline(TimeSteps%points(jstart),RedWin%WinV(jstart),ninterp,spl_large,spl_large,RedWin%ddWinV(jstart))
-            call spline_deriv(TimeSteps%points(jstart),RedWin%WinV(jstart),RedWin%ddWinV(jstart), RedWin%dWinV(jstart), ninterp)
+            call spline_def(TimeSteps%points(jstart:),RedWin%WinV(jstart:),ninterp,RedWin%ddWinV(jstart:))
+            call spline_deriv(TimeSteps%points(jstart:),RedWin%WinV(jstart:),RedWin%ddWinV(jstart:), RedWin%dWinV(jstart:), ninterp)
 
-            call spline(TimeSteps%points(jstart),RedWin%Wing(jstart),ninterp,spl_large,spl_large,RedWin%ddWing(jstart))
-            call spline_deriv(TimeSteps%points(jstart),RedWin%Wing(jstart),RedWin%ddWing(jstart), RedWin%dWing(jstart), ninterp)
+            call spline_def(TimeSteps%points(jstart:),RedWin%Wing(jstart:),ninterp,RedWin%ddWing(jstart:))
+            call spline_deriv(TimeSteps%points(jstart:),RedWin%Wing(jstart:),RedWin%ddWing(jstart:), RedWin%dWing(jstart:), ninterp)
 
-            call spline(TimeSteps%points(jstart),RedWin%Wing2(jstart),ninterp,spl_large,spl_large,RedWin%ddWing2(jstart))
-            call spline_deriv(TimeSteps%points(jstart),RedWin%Wing2(jstart),RedWin%ddWing2(jstart), &
-                RedWin%dWing2(jstart), ninterp)
+            call spline_def(TimeSteps%points(jstart:),RedWin%Wing2(jstart:),ninterp,RedWin%ddWing2(jstart:))
+            call spline_deriv(TimeSteps%points(jstart:),RedWin%Wing2(jstart:),RedWin%ddWing2(jstart:), &
+                RedWin%dWing2(jstart:), ninterp)
 
-            call spline_integrate(TimeSteps%points(jstart),RedWin%Wing(jstart),RedWin%ddWing(jstart), RedWin%WinF(jstart),ninterp)
+            call spline_integrate(TimeSteps%points(jstart:),RedWin%Wing(jstart:), &
+                RedWin%ddWing(jstart:), RedWin%WinF(jstart:),ninterp)
             RedWin%Fq = RedWin%WinF(TimeSteps%npoints)
 
             if (RedWin%kind == window_21cm) then
-                call spline_integrate(TimeSteps%points(jstart),RedWin%Wing2(jstart),&
-                    RedWin%ddWing2(jstart), tmp(jstart),ninterp)
+                call spline_integrate(TimeSteps%points(jstart:),RedWin%Wing2(jstart:),&
+                    RedWin%ddWing2(jstart:), tmp(jstart:),ninterp)
                 RedWin%optical_depth_21 = tmp(TimeSteps%npoints) / (State%CP%TCMB*1000)
                 !WinF not used.. replaced below
 
-                call spline(TimeSteps%points(jstart),RedWin%Wingtau(jstart),ninterp,spl_large,spl_large,RedWin%ddWingtau(jstart))
-                call spline_deriv(TimeSteps%points(jstart),RedWin%Wingtau(jstart),RedWin%ddWingtau(jstart), &
-                    RedWin%dWingtau(jstart), ninterp)
+                call spline_def(TimeSteps%points(jstart:),RedWin%Wingtau(jstart:),ninterp,RedWin%ddWingtau(jstart:))
+                call spline_deriv(TimeSteps%points(jstart:),RedWin%Wingtau(jstart:),RedWin%ddWingtau(jstart:), &
+                    RedWin%dWingtau(jstart:), ninterp)
             elseif (RedWin%kind == window_counts) then
 
                 if (State%CP%SourceTerms%counts_evolve) then
-                    call spline(TimeSteps%points(jstart),back_count_tmp(jstart,i),ninterp,spl_large,spl_large,tmp)
-                    call spline_deriv(TimeSteps%points(jstart),back_count_tmp(jstart,i),tmp,tmp2(jstart),ninterp)
+                    call spline_def(TimeSteps%points(jstart:),back_count_tmp(jstart:,i),ninterp,tmp)
+                    call spline_deriv(TimeSteps%points(jstart:),back_count_tmp(jstart:,i),tmp,tmp2(jstart:),ninterp)
                     do ix = jstart, TimeSteps%npoints
                         if (RedWin%Wing(ix)==0._dl) then
                             RedWin%Wingtau(ix) = 0
@@ -2566,8 +2578,8 @@
                     end do
 
                     !comoving_density_ev is d log(a^3 n_s)/d eta * window
-                    call spline(TimeSteps%points(jstart),RedWin%comoving_density_ev(jstart),ninterp,spl_large,spl_large,tmp)
-                    call spline_deriv(TimeSteps%points(jstart),RedWin%comoving_density_ev(jstart),tmp,tmp2(jstart),ninterp)
+                    call spline_def(TimeSteps%points(jstart:),RedWin%comoving_density_ev(jstart:),ninterp,tmp)
+                    call spline_deriv(TimeSteps%points(jstart:),RedWin%comoving_density_ev(jstart:),tmp,tmp2(jstart:),ninterp)
                     do ix = jstart, TimeSteps%npoints
                         if (RedWin%Wing(ix)==0._dl) then
                             RedWin%comoving_density_ev(ix) = 0
@@ -2579,8 +2591,8 @@
                     end do
                 else
                     RedWin%comoving_density_ev=0
-                    call spline(TimeSteps%points(jstart),hubble_tmp(jstart),ninterp,spl_large,spl_large,tmp)
-                    call spline_deriv(TimeSteps%points(jstart),hubble_tmp(jstart),tmp, tmp2(jstart), ninterp)
+                    call spline_def(TimeSteps%points(jstart:),hubble_tmp(jstart:),ninterp,tmp)
+                    call spline_deriv(TimeSteps%points(jstart:),hubble_tmp(jstart:),tmp, tmp2(jstart:), ninterp)
 
                     !assume d( a^3 n_s) of background population is zero, so remaining terms are
                     !wingtau =  g*(2/H\chi + Hdot/H^2)  when s=0; int_tmp = window/chi
@@ -2592,14 +2604,14 @@
                         *RedWin%Wing(jstart:TimeSteps%npoints)
                 endif
 
-                call spline(TimeSteps%points(jstart),RedWin%Wingtau(jstart),ninterp, &
-                    spl_large,spl_large,RedWin%ddWingtau(jstart))
-                call spline_deriv(TimeSteps%points(jstart),RedWin%Wingtau(jstart),RedWin%ddWingtau(jstart), &
-                    RedWin%dWingtau(jstart), ninterp)
+                call spline_def(TimeSteps%points(jstart:),RedWin%Wingtau(jstart:),ninterp, &
+                    RedWin%ddWingtau(jstart:))
+                call spline_deriv(TimeSteps%points(jstart:),RedWin%Wingtau(jstart:),RedWin%ddWingtau(jstart:), &
+                    RedWin%dWingtau(jstart:), ninterp)
 
                 !WinF is int[ g*(...)]
-                call spline_integrate(TimeSteps%points(jstart),RedWin%Wingtau(jstart),&
-                    RedWin%ddWingtau(jstart), RedWin%WinF(jstart),ninterp)
+                call spline_integrate(TimeSteps%points(jstart:),RedWin%Wingtau(jstart:),&
+                    RedWin%ddWingtau(jstart:), RedWin%WinF(jstart:),ninterp)
             end if
         end associate
     end do
@@ -2735,7 +2747,7 @@
     call CTrans%q%getArray(.true.)
 
     allocate(CTrans%Delta_p_l_k(CTrans%NumSources,&
-        min(CTrans%max_index_nonlimber,CTrans%ls%nl), CTrans%q%npoints),  STAT = st)
+        min(CTrans%max_index_nonlimber,CTrans%ls%nl), CTrans%q%npoints), STAT = st)
     if (st /= 0) call MpiStop('Init_ClTransfer: Error allocating memory for transfer functions')
     CTrans%Delta_p_l_k = 0
 
@@ -2804,7 +2816,7 @@
             allocate(this%Cl_scalar(CP%Min_l:CP%Max_l, C_Temp:State%Scalar_C_last), source=0._dl)
             if (CP%want_cl_2D_array) then
                 if (allocated(this%Cl_scalar_array)) deallocate(this%Cl_scalar_array)
-                allocate(this%Cl_scalar_Array(CP%Min_l:CP%Max_l,  &
+                allocate(this%Cl_scalar_Array(CP%Min_l:CP%Max_l, &
                     3+State%num_redshiftwindows+CP%CustomSources%num_custom_sources, &
                     3+State%num_redshiftwindows+CP%CustomSources%num_custom_sources))
                 this%Cl_scalar_array = 0
@@ -3027,14 +3039,14 @@
 
     if (CP%WantScalars) then
         Norm=1/this%Cl_scalar(lnorm, C_Temp)
-        this%Cl_scalar(CP%Min_l:CP%Max_l,  C_Temp:C_Cross) = this%Cl_scalar(CP%Min_l:CP%Max_l, C_Temp:C_Cross) * Norm
+        this%Cl_scalar(CP%Min_l:CP%Max_l, C_Temp:C_Cross) = this%Cl_scalar(CP%Min_l:CP%Max_l, C_Temp:C_Cross) * Norm
     end if
 
     if (CP%WantTensors) then
         if (.not.CP%WantScalars) Norm = 1/this%Cl_tensor(lnorm, C_Temp)
         !Otherwise Norm already set correctly
         this%Cl_tensor(CP%Min_l:CP%Max_l_tensor, CT_Temp:CT_Cross) =  &
-            this%Cl_tensor(CP%Min_l:CP%Max_l_tensor,  CT_Temp:CT_Cross) * Norm
+            this%Cl_tensor(CP%Min_l:CP%Max_l_tensor, CT_Temp:CT_Cross) * Norm
     end if
 
     end subroutine TCLdata_NormalizeClsAtL
@@ -3276,11 +3288,10 @@
     subroutine MatterPowerdata_getsplines(PK_data)
     Type(MatterPowerData) :: PK_data
     integer i
-    real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
 
     do i = 1,PK_Data%num_z
-        call spline(PK_data%log_kh,PK_data%matpower(1,i),PK_data%num_k,&
-            cllo,clhi,PK_data%ddmat(1,i))
+        call spline_def(PK_data%log_kh,PK_data%matpower(:,i),PK_data%num_k,&
+            PK_data%ddmat(:,i))
     end do
 
     end subroutine MatterPowerdata_getsplines
@@ -3289,15 +3300,14 @@
     subroutine MatterPowerdata_getsplines21cm(PK_data)
     Type(MatterPowerData) :: PK_data
     integer i
-    real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
 
     do i = 1,PK_Data%num_z
-        call spline(PK_data%log_k,PK_data%matpower(1,i),PK_data%num_k,&
-            cllo,clhi,PK_data%ddmat(1,i))
-        call spline(PK_data%log_k,PK_data%vvpower(1,i),PK_data%num_k,&
-            cllo,clhi,PK_data%ddvvpower(1,i))
-        call spline(PK_data%log_k,PK_data%vdpower(1,i),PK_data%num_k,&
-            cllo,clhi,PK_data%ddvdpower(1,i))
+        call spline_def(PK_data%log_k,PK_data%matpower(:,i),PK_data%num_k,&
+            PK_data%ddmat(:,i))
+        call spline_def(PK_data%log_k,PK_data%vvpower(:,i),PK_data%num_k,&
+            PK_data%ddvvpower(:,i))
+        call spline_def(PK_data%log_k,PK_data%vdpower(:,i),PK_data%num_k,&
+            PK_data%ddvdpower(:,i))
     end do
 
     end subroutine MatterPowerdata_getsplines21cm
@@ -3322,7 +3332,7 @@
 
     end subroutine MatterPowerdata_Free
 
-    function MatterPowerData_k(PK,  kh, itf, index_cache) result(outpower)
+    function MatterPowerData_k(PK, kh, itf, index_cache) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
     Type(MatterPowerData) :: PK
     integer, intent(in) :: itf
@@ -3373,7 +3383,7 @@
     end function MatterPowerData_k
 
     !Sources
-    subroutine MatterPower21cm_k(PK,  k, itf, monopole, vv, vd)
+    subroutine MatterPower21cm_k(PK, k, itf, monopole, vv, vd)
     !Get monopole and velocity power at particular k by interpolation
     Type(MatterPowerData) :: PK
     integer, intent(in) :: itf
@@ -3443,7 +3453,7 @@
     real(dl):: minkhd, dlnkhd
 
     minkhd = minkh; dlnkhd = dlnkh
-    call Transfer_GetMatterPowerD(State, MTrans,  outpowerd, itf, minkhd, dlnkhd, npoints,var1, var2)
+    call Transfer_GetMatterPowerD(State, MTrans, outpowerd, itf, minkhd, dlnkhd, npoints,var1, var2)
     outpower(1:npoints) = outpowerd(1:npoints)
 
     end subroutine Transfer_GetMatterPowerS
@@ -3470,12 +3480,12 @@
     real(dl), intent(in) :: minkh, dlnkh
     integer, intent(in), optional :: var1, var2
 
-    real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
     integer ik, llo,il,lhi,lastix
     real(dl) matpower(MTrans%num_q_trans), kh, kvals(MTrans%num_q_trans), ddmat(MTrans%num_q_trans)
     real(dl) atransfer,xi, a0, b0, ho, logmink,k, h
     integer itf
-    integer :: s1,s2
+    integer :: s1,s2, sign
+    logical log_interp
     real(dl), allocatable :: ratio(:)
 
     s1 = PresentDefault (transfer_power_var, var1)
@@ -3503,11 +3513,20 @@
         atransfer=MTrans%TransferData(s1,ik,itf)*MTrans%TransferData(s2,ik,itf)
         if (State%CP%NonLinear/=NonLinear_none .and. State%CP%NonLinear/=NonLinear_Lens) &
             atransfer = atransfer* ratio(ik)**2 !only one element, this itf
-        matpower(ik) = log(atransfer*k*const_pi*const_twopi*h**3)
+        matpower(ik) = atransfer*k*const_pi*const_twopi*h**3
         !Put in power spectrum later: transfer functions should be smooth, initial power may not be
     end do
-
-    call spline(kvals,matpower,MTrans%num_q_trans,cllo,clhi,ddmat)
+    sign = 1
+    log_interp = .true.
+    if (any(matpower <= 0)) then
+        if (all(matpower < 0)) then
+            sign = -1
+        else
+            log_interp = .false.
+        endif
+    endif
+    if (log_interp) matpower = log(sign*matpower)
+    call spline_def(kvals,matpower,MTrans%num_q_trans, ddmat)
 
     llo=1
     lastix = npoints + 1
@@ -3541,7 +3560,9 @@
         lastix = lastix+1
     end do
 
-    outpower = exp(max(-30.d0,outpower))
+    if (log_interp) then
+        outpower = sign*exp(max(-30.d0,outpower))
+    end if
     associate(InitPower => State%CP%InitPower)
         do il = 1, npoints
             k = exp(logmink + dlnkh*(il-1))*h
@@ -3714,7 +3735,7 @@
 
     end subroutine Transfer_Get_sigma8
 
-    subroutine Transfer_Get_sigmas(State, MTrans,  R, var_delta, var_v)
+    subroutine Transfer_Get_sigmas(State, MTrans, R, var_delta, var_v)
     !Get sigma8 and sigma_{delta v} (for growth, like f sigma8 in LCDM)
     class(CAMBdata) :: State
     Type(MatterTransferData) :: MTrans
@@ -3729,7 +3750,7 @@
     s1 = PresentDefault (transfer_power_var, var_delta)
     s2 = PresentDefault (Transfer_Newt_vel_cdm, var_v)
 
-    call Transfer_Get_SigmaR(State, MTrans,  radius, MTrans%sigma_8, s1,s1)
+    call Transfer_Get_SigmaR(State, MTrans, radius, MTrans%sigma_8, s1,s1)
     if (State%get_growth_sigma8) call Transfer_Get_SigmaR(State, MTrans, radius, &
         MTrans%sigma2_vdelta_8(:), s1, s2, root=.false.)
 
@@ -3856,10 +3877,10 @@
                 columns = ['P   ', 'P_vd','P_vv']
                 unit = open_file_header(FileNames(itf), 'k/h', columns(:ncol), 15)
                 do i=1,points
-					!> MGCAMB MOD START: increasing number of decimal points for accuracy tests
-					write (unit, '(*(E15.8))') MTrans%TransferData(Transfer_kh,i,1),outpower(i,:)
-               !     write (unit, '(*(E15.6))') MTrans%TransferData(Transfer_kh,i,1),outpower(i,:)
-					!< MGCAMB MOD END
+                    !> MGCAMB MOD START: increasing number of decimal points for accuracy tests
+                    write (unit, '(*(E15.8))') MTrans%TransferData(Transfer_kh,i,1),outpower(i,:)
+                    ! write (unit, '(*(E15.6))') MTrans%TransferData(Transfer_kh,i,1),outpower(i,:)
+                    !< MGCAMB MOD END
                 end do
                 close(unit)
             else
@@ -3869,16 +3890,16 @@
                 points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/dlnkh+1
                 !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
                 allocate(outpower(points,1))
-                call Transfer_GetMatterPowerS(State, MTrans, outpower(1,1), itf,  minkh,dlnkh, points)
+                call Transfer_GetMatterPowerS(State, MTrans, outpower(1,1), itf, minkh,dlnkh, points)
 
                 columns(1) = 'P'
                 unit = open_file_header(FileNames(itf), 'k/h', columns(:1), 15)
 
                 do i=1,points
-					!> MGCAMB MOD START: increasing number of decimal points for accuracy tests
-					write (unit, '(*(E15.8))') minkh*exp((i-1)*dlnkh),outpower(i,1)
-               !     write (unit, '(*(E15.6))') minkh*exp((i-1)*dlnkh),outpower(i,1)
-					!< MGCAMB MOD END
+                   !> MGCAMB MOD START: increasing number of decimal points for accuracy tests
+                    write (unit, '(*(E15.8))') minkh*exp((i-1)*dlnkh),outpower(i,1)
+                   ! write (unit, '(*(E15.6))') minkh*exp((i-1)*dlnkh),outpower(i,1)
+                   !< MGCAMB MOD END
                 end do
                 close(unit)
             end if
@@ -3964,7 +3985,7 @@
     end if
     x= Vars%chi*k
 
-    call MatterPower21cm_k(Vars%PK,  k, Vars%itf, monopole, vv, vd)
+    call MatterPower21cm_k(Vars%PK, k, Vars%itf, monopole, vv, vd)
     call bjl_external(Vars%l, x, jl)
     call bjl_external(Vars%l-1, x, jlm1)
     ddjl = -( 2/x*jlm1-(Vars%l+2)*real(Vars%l+1,dl)/x**2*jl + jl)
@@ -3990,7 +4011,7 @@
     end if
     x= Vars%chi*k
 
-    call MatterPower21cm_k(Vars%PK,  k, Vars%itf, monopole, vv, vd)
+    call MatterPower21cm_k(Vars%PK, k, Vars%itf, monopole, vv, vd)
     lphalf=Vars%l+0.5_dl
 
     jl = 1/(2*x**2) /sqrt(1-(lphalf/x)**2)

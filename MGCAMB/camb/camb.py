@@ -76,7 +76,7 @@ def get_age(params):
     Get age of universe for given set of parameters
 
     :param params:  :class:`.model.CAMBparams` instance
-    :return: age of universe in gigayears
+    :return: age of universe in Julian gigayears
     """
     return CAMB_GetAge(byref(params))
 
@@ -140,6 +140,7 @@ def set_params(cp=None, verbose=False, **params):
         assert isinstance(cp, model.CAMBparams), "cp should be an instance of CAMBparams"
 
     used_params = set()
+
     def do_set(setter):
         kwargs = {kk: params[kk] for kk in getfullargspec(setter).args[1:] if kk in params}
         used_params.update(kwargs)
@@ -153,7 +154,7 @@ def set_params(cp=None, verbose=False, **params):
     do_set(cp.set_accuracy)
     do_set(cp.set_classes)
     do_set(cp.DarkEnergy.set_params)
-    do_set(cp.set_mgparams)
+    do_set(cp.Reion.set_extra_params)
     do_set(cp.set_cosmology)
     do_set(cp.set_matter_power)
     do_set(cp.set_for_lmax)
@@ -203,10 +204,12 @@ def get_valid_numerical_params(transfer_only=False, **class_names):
                     params.add(arg)
 
     extract_params(cp.DarkEnergy.set_params)
+    extract_params(cp.Reion.set_extra_params)
     extract_params(cp.set_cosmology)
     if not transfer_only:
         extract_params(cp.InitPower.set_params)
         extract_params(cp.NonLinearModel.set_params)
+    # noinspection PyProtectedMember
     for f, tp in cp._fields_:
         if not f.startswith('_') and tp == ctypes.c_double:
             params.add(f)
@@ -232,14 +235,16 @@ def set_params_cosmomc(p, num_massive_neutrinos=1, neutrino_hierarchy='degenerat
     pars = inpars or model.CAMBparams()
     if p.get('alpha1', 0) or p.get('Aphiphi', 1) != 1:
         raise ValueError('Parameter not currrently supported by set_params_cosmomc')
+
+    pars.set_dark_energy(w=p.get('w', -1), wa=p.get('wa', 0), dark_energy_model=dark_energy_model)
+    pars.Reion.set_extra_params(deltazrei=p.get('deltazrei', None))
     pars.set_cosmology(H0=p['H0'], ombh2=p['omegabh2'], omch2=p['omegach2'], mnu=p.get('mnu', 0.06),
-                       omk=p.get('omegak', 0), tau=p['tau'], deltazrei=p.get('deltazrei', None),
+                       omk=p.get('omegak', 0), tau=p['tau'],
                        nnu=p.get('nnu', constants.default_nnu), Alens=p.get('Alens', 1.0),
                        YHe=p.get('yheused', None), meffsterile=p.get('meffsterile', 0),
                        num_massive_neutrinos=num_massive_neutrinos, neutrino_hierarchy=neutrino_hierarchy)
     pars.InitPower.set_params(ns=p['ns'], r=p.get('r', 0), As=p['A'] * 1e-9, nrun=p.get('nrun', 0),
                               nrunrun=p.get('nrunrun', 0))
-    pars.set_dark_energy(w=p.get('w', -1), wa=p.get('wa', 0), dark_energy_model=dark_energy_model)
     pars.set_for_lmax(lmax, lens_potential_accuracy=lens_potential_accuracy)
     pars.NonLinearModel.set_params(halofit_version=halofit_version)
     pars.WantTensors = pars.InitPower.has_tensors()
@@ -287,21 +292,33 @@ def read_ini(ini_filename, no_validate=False):
     """
     Get a :class:`.model.CAMBparams` instance using parameter specified in a .ini parameter file.
 
-    :param ini_filename: path of the .ini file to read
+    :param ini_filename: path of the .ini file to read, or a full URL to download from
     :param no_validate: do not pre-validate the ini file (faster, but may crash kernel if error)
     :return: :class:`.model.CAMBparams` instance
     """
+    if ini_filename.startswith('http'):
+        import requests, tempfile
+        data = requests.get(ini_filename)
+        ini_filename = tempfile.NamedTemporaryFile(suffix='.ini', delete=False).name
+        with open(ini_filename, 'wb') as file:
+            file.write(data.content)
+    else:
+        data = None
     if not os.path.exists(ini_filename):
         raise CAMBValueError('File not found: %s' % ini_filename)
-    if not no_validate:
-        validate_ini_file(ini_filename)
-    cp = model.CAMBparams()
-    read_inifile = camblib.__camb_MOD_camb_readparamfile
-    read_inifile.argtypes = [POINTER(CAMBparams), ctypes.c_char_p, POINTER(ctypes.c_long)]
-    read_inifile.restype = ctypes.c_bool
-    s = ctypes.create_string_buffer(ini_filename.encode("latin-1"))
-    if not read_inifile(cp, s, ctypes.c_long(len(ini_filename))):
-        config.check_global_error('read_ini')
+    try:
+        if not no_validate:
+            validate_ini_file(ini_filename)
+        cp = model.CAMBparams()
+        read_inifile = camblib.__camb_MOD_camb_readparamfile
+        read_inifile.argtypes = [POINTER(CAMBparams), ctypes.c_char_p, POINTER(ctypes.c_long)]
+        read_inifile.restype = ctypes.c_bool
+        s = ctypes.create_string_buffer(ini_filename.encode("latin-1"))
+        if not read_inifile(cp, s, ctypes.c_long(len(ini_filename))):
+            config.check_global_error('read_ini')
+    finally:
+        if data:
+            os.unlink(ini_filename)
     return cp
 
 

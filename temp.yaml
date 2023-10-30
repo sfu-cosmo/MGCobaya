@@ -1,6 +1,6 @@
 theory:
   camb:
-    path: /path/to/MGCobaya-beta/MGCAMB
+    path: /path/to/MGCobaya/MGCAMB
     extra_args:
       halofit_version: mead
       bbn_predictor: PArthENoPE_880.2_standard.dat
@@ -15,7 +15,7 @@ theory:
       alt_MG_flag: 1
       QSA_flag: 1
       CDM_flag: 1
-      test_flag: 1
+      muSigma_flag: 1
       mugamma_par: 1
       musigma_par: 1
       QR_par: 1
@@ -28,7 +28,7 @@ likelihood:
   planck_2018_highl_plik.TTTEEE: null
   planck_2018_lensing.clik: null
   des_y1.joint:
-    python_path: /path/to/MGCobaya-beta/des 
+    python_path: /path/to/MGCobaya/des 
 params:
   logA:
     prior:

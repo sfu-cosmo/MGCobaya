@@ -10,13 +10,14 @@ from .initialpower import InitialPower, SplinedInitialPower
 from .nonlinear import NonLinearModel
 from .dark_energy import DarkEnergyModel, DarkEnergyEqnOfState
 from .recombination import RecombinationModel
+from .reionization import ReionizationModel
 from .sources import SourceWindow
 from . import bbn
 import logging
 from typing import Union, Optional
 
 max_nu = 5
-max_transfer_redshifts = 150
+max_transfer_redshifts = 256
 nthermo_derived = 13
 Transfer_kh = 1
 Transfer_cdm = 2
@@ -236,8 +237,10 @@ class CAMBparams(F2003Class):
         ("Log_lvalues", c_bool, "Use log spacing for sampling in L"),
         ("use_cl_spline_template", c_bool,
          "When interpolating use a fiducial spectrum shape to define ratio to spline"),
+        ("min_l_logl_sampling", c_int, "Minimum L to use log sampling for L"),
         ("SourceWindows", AllocatableObjectArray(SourceWindow)),
         ("CustomSources", CustomSources),
+        ("MG_wrapped", c_bool, "MG_wrapped"),
         ("MG_flag", c_int, "MG_flag"),
         ("GRtrans", c_double, "GRtrans"),
         ("pure_MG_flag", c_int, "pure_MG_flag"),
@@ -336,7 +339,8 @@ class CAMBparams(F2003Class):
         """
         return self.f_Validate() != 0
 
-    def set_accuracy(self, AccuracyBoost=1., lSampleBoost=1., lAccuracyBoost=1., DoLateRadTruncation=True):
+    def set_accuracy(self, AccuracyBoost=1., lSampleBoost=1., lAccuracyBoost=1., DoLateRadTruncation=True,
+                     min_l_logl_sampling=None):
         """
         Set parameters determining overall calculation accuracy (large values may give big slow down).
         For finer control you can set individual accuracy parameters by changing CAMBParams.Accuracy
@@ -347,12 +351,16 @@ class CAMBparams(F2003Class):
         :param lSampleBoost: increase lSampleBoost to increase density of L sampling for CMB
         :param lAccuracyBoost: increase lAccuracyBoost to increase the maximum L included in the Boltzmann hierarchies
         :param DoLateRadTruncation: If True, use approximation to radiation perturbation evolution at late times
+        :param min_l_logl_sampling: at L>min_l_logl_sampling uses sparser log sampling for L interpolation;
+                                    increase above 5000 for better accuracy at L > 5000
         :return: self
         """
         self.Accuracy.lSampleBoost = lSampleBoost
         self.Accuracy.AccuracyBoost = AccuracyBoost
         self.Accuracy.lAccuracyBoost = lAccuracyBoost
         self.DoLateRadTruncation = DoLateRadTruncation
+        if min_l_logl_sampling:
+            self.min_l_logl_sampling = min_l_logl_sampling
         return self
 
     def set_initial_power_function(self, P_scalar, P_tensor=None, kmin=1e-6, kmax=100., N_min=200, rtol=5e-5,
@@ -439,8 +447,8 @@ class CAMBparams(F2003Class):
         :param cosmomc_approx: if true, use approximate fitting formula for :math:`z_\star`,
                                if false do full numerical calculation
         :param theta_H0_range: min, max iterval to search for H0 (in km/s/Mpc)
-        :param est_H0: an initial guess for H0 in km/s/Mpc, used in the case comsomc_approx=False.
-        :param iteration_threshold: differnce in H0 from est_H0 for which to iterate, used for cosmomc_approx=False
+        :param est_H0: an initial guess for H0 in km/s/Mpc, used in the case cosmomc_approx=False.
+        :param iteration_threshold: difference in H0 from est_H0 for which to iterate, used for cosmomc_approx=False
         """
 
         if not (0.001 < theta < 0.1):
@@ -486,7 +494,7 @@ class CAMBparams(F2003Class):
                       neutrino_hierarchy: Union[str, int] = 'degenerate', num_massive_neutrinos=1,
                       mnu=0.06, nnu=constants.default_nnu, YHe: Optional[float] = None, meffsterile=0.0,
                       standard_neutrino_neff=constants.default_nnu, TCMB=constants.COBE_CMBTemp,
-                      tau: Optional[float] = None, zrei: Optional[float] = None, deltazrei: Optional[float] = None,
+                      tau: Optional[float] = None, zrei: Optional[float] = None,
                       Alens=1.0, bbn_predictor: Union[None, str, bbn.BBNPredictor] = None, theta_H0_range=(10, 100)):
         r"""
         Sets cosmological parameters in terms of physical densities and parameters (e.g. as used in Planck analyses).
@@ -499,7 +507,7 @@ class CAMBparams(F2003Class):
         (cosmomc_theta, which is based on a fitting forumula for simple models, or thetastar, which is numerically
         calculated more generally). Note that you must have already set the dark energy model, you can't use
         set_cosmology with theta and then change the background evolution (which would change theta at the calculated
-        H0 value).Likewise the dark energy model cannot depend explicitly on H0.
+        H0 value). Likewise the dark energy model cannot depend explicitly on H0.
 
         :param H0: Hubble parameter today in km/s/Mpc. Can leave unset and instead set thetastar or cosmomc_theta
                   (which solves for the required H0).
@@ -529,7 +537,6 @@ class CAMBparams(F2003Class):
         :param TCMB: CMB temperature (in Kelvin)
         :param tau: optical depth; if None and zrei is None, current Reion settings are not changed
         :param zrei: reionization mid-point optical depth (set tau=None to use this)
-        :param deltazrei: redshift width of reionization; if None, uses default
         :param Alens: (non-physical) scaling of the lensing potential compared to prediction
         :param bbn_predictor: :class:`.bbn.BBNPredictor` instance used to get YHe from BBN consistency if YHe is None,
          or name of a BBN predictor class, or file name of an interpolation table
@@ -595,17 +602,15 @@ class CAMBparams(F2003Class):
         if tau is not None:
             if zrei is not None:
                 raise CAMBError('Cannot set both tau and zrei')
-            self.Reion.set_tau(tau, delta_redshift=deltazrei)
+            self.Reion.set_tau(tau)
         elif zrei is not None:
-            self.Reion.set_zrei(zrei, delta_redshift=deltazrei)
-        elif deltazrei:
-            raise CAMBError('must set tau if setting deltazrei')
+            self.Reion.set_zrei(zrei)
 
         return self
 
 #MGCAMB MOD START
-    def set_mgparams(self, MG_flag= 0, GRtrans =  0.001, pure_MG_flag = 1, alt_MG_flag = 1, QSA_flag = 1, CDM_flag = 1, muSigma_flag = 1,
-						mugamma_par = 1, B1 = 1.333, lambda1_2  = 1000, B2 = 0.5, lambda2_2 = 1000, ss = 4, E11 = 1.0, E22 = 1.0,
+    def set_mgparams(self, MG_wrapped = True, MG_flag= 0, GRtrans =  0.001, pure_MG_flag = 1, alt_MG_flag = 1, QSA_flag = 1, CDM_flag = 1,
+						muSigma_flag = 1, mugamma_par = 1, B1 = 1.333, lambda1_2  = 1000, B2 = 0.5, lambda2_2 = 1000, ss = 4, E11 = 1.0, E22 = 1.0,
 						ga = 0.5, nn = 2, musigma_par = 1, mu0 =0.0, sigma0 = 0, QR_par = 1, MGQfix = 1, MGRfix = 1, Qnot = 1.0,
 						Rnot= 1.0, sss = 0, Linder_gamma = 0.545, B0 = 0.001, beta_star = 1.0, a_star = 0.5, xi_star = 0.001,
 						beta0 = 0.0, xi0 = 0.0001, DilS = 0.24, DilR = 1.0, F_R0 = 0.0001, FRn = 1.0, 
@@ -617,6 +622,7 @@ class CAMBparams(F2003Class):
 						MGCAMB_Sigma_idx_10 = 1.0,MGCAMB_Sigma_idx_11 = 1.0,Funcofw_1=0.7, Funcofw_2=0.7,Funcofw_3=0.7,Funcofw_4=0.7,
 						Funcofw_5=0.7,Funcofw_6=0.7,Funcofw_7=0.7,Funcofw_8=0.7,Funcofw_9=0.7,Funcofw_10=0.7,Funcofw_11=0.7):
 
+        self.MG_wrapped = MG_wrapped
         self.MG_flag = MG_flag
         self.pure_MG_flag = pure_MG_flag
         self.alt_MG_flag = alt_MG_flag
@@ -656,8 +662,8 @@ class CAMBparams(F2003Class):
         self.ga = ga
         self.nn = nn
         self.w0DE = w0DE    
-        self.waDE = waDE   
-        self.MGDE_pert = MGDE_pert   
+        self.waDE = waDE      
+        self.MGDE_pert = MGDE_pert
         self.MGCAMB_Mu_idx_1 =  MGCAMB_Mu_idx_1
         self.MGCAMB_Mu_idx_2 =  MGCAMB_Mu_idx_2
         self.MGCAMB_Mu_idx_3 =  MGCAMB_Mu_idx_3
@@ -730,14 +736,16 @@ class CAMBparams(F2003Class):
             return sum(self.nu_mass_degeneracies[:self.nu_mass_eigenstates]) + self.num_nu_massless
 
     def set_classes(self, dark_energy_model=None, initial_power_model=None,
-                    non_linear_model=None, recombination_model=None):
+                    non_linear_model=None, recombination_model=None,
+                    reionization_model=None):
         """
         Change the classes used to implement parts of the model.
 
         :param dark_energy_model: 'fluid', 'ppf', or name of a DarkEnergyModel class
         :param initial_power_model: name of an InitialPower class
         :param non_linear_model: name of a NonLinearModel class
-        :param recombination_model: name of recombination_model class
+        :param recombination_model: name of RecombinationModel class
+        :param reionization_model: name of a ReionizationModel class
         """
         if dark_energy_model:
             self.DarkEnergy = self.make_class_named(dark_energy_model, DarkEnergyModel)
@@ -747,6 +755,8 @@ class CAMBparams(F2003Class):
             self.NonLinear = self.make_class_named(non_linear_model, NonLinearModel)
         if recombination_model:
             self.Recomb = self.make_class_named(recombination_model, RecombinationModel)
+        if reionization_model:
+            self.Reion = self.make_class_named(reionization_model, ReionizationModel)
 
     def set_dark_energy(self, w=-1.0, cs2=1.0, wa=0, dark_energy_model='fluid'):
         r"""
@@ -794,7 +804,7 @@ class CAMBparams(F2003Class):
         (or the default one, if `Y_He` has not been set).
 
         :param ombh2: :math:`\Omega_b h^2` (default: value passed to :meth:`set_cosmology`)
-        :param delta_neff:  additional :math:`N_{\rm eff}` relative to standard value (of 3.046)
+        :param delta_neff:  additional :math:`N_{\rm eff}` relative to standard value (of 3.044)
                            (default: from values passed to :meth:`set_cosmology`)
         :return:  :math:`Y_p^{\rm BBN}` helium nucleon fraction predicted by BBN.
         """
@@ -812,7 +822,7 @@ class CAMBparams(F2003Class):
         (or the default one, if `Y_He` has not been set).
 
         :param ombh2: :math:`\Omega_b h^2` (default: value passed to :meth:`set_cosmology`)
-        :param delta_neff:  additional :math:`N_{\rm eff}` relative to standard value (of 3.046)
+        :param delta_neff:  additional :math:`N_{\rm eff}` relative to standard value (of 3.044)
                            (default: from values passed to :meth:`set_cosmology`)
         :return: BBN helium nucleon fraction D/H
         """

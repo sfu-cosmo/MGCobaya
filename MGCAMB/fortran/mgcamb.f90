@@ -1,5 +1,6 @@
 module MGCAMB
     use precision
+    use splines
 
     ! new model selection flags
     integer :: MG_flag
@@ -187,6 +188,8 @@ contains
 	subroutine reconstruction_arr
 
 		use precision
+        !use Interpolation
+        !use splines
 		implicit none
 
 		integer :: i
@@ -207,17 +210,29 @@ contains
 			end if
 		  end do
 
-		  call spline(a_arr,mu_arr,2*nnode,d0lo,d0hi,ddmu_arr)
+		!   call spline(a_arr,mu_arr,2*nnode,d0lo,d0hi,ddmu_arr)
+		!   call spline_deriv(a_arr,mu_arr,ddmu_arr,dmu_arr,2*nnode)
+		!   call spline(a_arr,dmu_arr,2*nnode,d0lo,d0hi,dddmu_arr)
+		  
+		!   call spline(a_arr,gamma_arr,2*nnode,d0lo,d0hi,ddgamma_arr)
+		!   call spline_deriv(a_arr,gamma_arr,ddgamma_arr,dgamma_arr,2*nnode)
+		!   call spline(a_arr,dgamma_arr,2*nnode,d0lo,d0hi,dddgamma_arr)
+		  
+		!   call spline(a_arr,X_arr,2*nnode,d0lo,d0hi,ddX_arr)
+		!   call spline_deriv(a_arr,X_arr,ddX_arr,dX_arr,2*nnode)
+		!   call spline(a_arr,dX_arr,2*nnode,d0lo,d0hi,dddX_arr)	  
+
+		  call spline_def(a_arr,mu_arr,2*nnode,ddmu_arr)
 		  call spline_deriv(a_arr,mu_arr,ddmu_arr,dmu_arr,2*nnode)
-		  call spline(a_arr,dmu_arr,2*nnode,d0lo,d0hi,dddmu_arr)
+		  call spline_def(a_arr,dmu_arr,2*nnode,dddmu_arr)
 		  
-		  call spline(a_arr,gamma_arr,2*nnode,d0lo,d0hi,ddgamma_arr)
+		  call spline_def(a_arr,gamma_arr,2*nnode,ddgamma_arr)
 		  call spline_deriv(a_arr,gamma_arr,ddgamma_arr,dgamma_arr,2*nnode)
-		  call spline(a_arr,dgamma_arr,2*nnode,d0lo,d0hi,dddgamma_arr)
+		  call spline_def(a_arr,dgamma_arr,2*nnode,dddgamma_arr)
 		  
-		  call spline(a_arr,X_arr,2*nnode,d0lo,d0hi,ddX_arr)
+		  call spline_def(a_arr,X_arr,2*nnode,ddX_arr)
 		  call spline_deriv(a_arr,X_arr,ddX_arr,dX_arr,2*nnode)
-		  call spline(a_arr,dX_arr,2*nnode,d0lo,d0hi,dddX_arr)	  
+		  call spline_def(a_arr,dX_arr,2*nnode,dddX_arr)
 
 
 	end subroutine reconstruction_arr
@@ -244,6 +259,7 @@ contains
             mg_cache%mudot      = MGCAMB_MuDot( a, mg_par_cache, mg_cache )
             mg_cache%gamma      = MGCAMB_Gamma( a, mg_par_cache, mg_cache )
             mg_cache%gammadot   = MGCAMB_GammaDot( a, mg_par_cache, mg_cache )
+
 
         ! other EFT functions are zero
             mg_cache%q      =      0._dl
@@ -1981,7 +1997,7 @@ contains
 		end if
 
 	end subroutine MGCAMB_DE_EoS
-
+    
 	!>this subroutine reads MG parameters into the module
 	subroutine MGCAMB_read_in_MGparams(CP)
 		use precision
@@ -2055,7 +2071,7 @@ contains
         w0DE = CP%w0DE             !< w0 parameters for DE
         waDE = CP%waDE             !< waDE parameters for DE
 
-        !DE perturbations
+        !DE pertubations
         MGDE_pert = CP%MGDE_pert
 
         !reconstruction model parameters
@@ -2204,7 +2220,501 @@ contains
 				stop 'Choose MG_flag properly!'
 			end if
 		end if
-    end subroutine MGCAMB_read_in_MGparams  
+    end subroutine MGCAMB_read_in_MGparams
+
+
+    ! ---------------------------------------------------------------------------------------------
+    !> Subroutine that reads the MGCAMB model parameters
+    subroutine MGCAMB_read_model_params( mg_par_cache, Ini )
+        use IniObjects
+	    type(TIniFile) :: Ini   
+        Type(MGCAMB_parameter_cache), intent(in)   :: mg_par_cache  !< cache containing the parameters
+
+		integer :: i
+		character(len=(10)) :: cTemp
+
+        ! 1. MG_flag
+        MG_flag = Ini%Read_Int('MG_flag', 0) 
+ 
+        if ( MG_flag /= 0 ) then
+            call print_MGCAMB_header  !! call the printing subroutine down below
+            write(*,*)
+            write(*,*) 'MG_flag:', MG_flag
+
+            write(*,*) 'Debug:', DebugMGCAMB
+
+
+            ! read GRtrans
+            GRtrans = Ini%Read_Double('GRtrans',0.01_dl)
+            write(*,*) '    GRtrans:', GRtrans
+
+            ! 1. pure MG models
+            if ( MG_flag == 1 ) then
+
+                pure_MG_flag = Ini%Read_Int('pure_MG_flag', 1)
+
+                if ( pure_MG_flag == 1 ) then ! mu-gamma
+                    write(*,*) '    MGCAMB: mu-gamma parametrization'
+                    mugamma_par = Ini%Read_Int('mugamma_par' , 1)
+
+                    if ( mugamma_par == 1 ) then
+                        write(*,*) '        BZ parametrization'
+                        B1= Ini%Read_Double('B1',0._dl)
+                        B2= Ini%Read_Double('B2',0._dl)
+                        lambda1_2= Ini%Read_Double('lambda1_2',0._dl)
+                        lambda2_2= Ini%Read_Double('lambda2_2',0._dl)
+                        ss= Ini%Read_Double('ss',0._dl)
+                    else if ( mugamma_par == 2 ) then
+                        write(*,*) '        Planck parametrization'
+                        E11     = Ini%Read_Double('E11', 0._dl)
+                        E22     = Ini%Read_Double('E22', 0._dl)
+                        write(*,*) 'E11, E22', E11, E22
+                    else if ( mugamma_par == 3 ) then
+                        write(*,*) '        Effective Newton constant'
+                        ga      = Ini%Read_Double('ga', 0._dl)
+                        nn      = Ini%Read_Double('nn', 0._dl)
+                        write(*,*) 'ga, nn:', ga, nn
+                    else
+                        write(*,*) ' write your own mu-gamma parametrization in mgcamb.f90'
+                        stop
+                    end if
+
+
+                else if ( pure_MG_flag == 2 ) then ! mu-Sigma
+                    write(*,*) '    MGCAMB: mu-Sigma parametrization'
+                    muSigma_par = Ini%Read_Int('musigma_par', 1)
+                    if ( muSigma_par == 1 ) then
+                        write(*,*) '        DES parametrization'
+                        mu0     = Ini%Read_Double('mu0', 0._dl)
+                        sigma0  = Ini%Read_Double('sigma0', 0._dl)
+                        write(*,*) 'mu0, sigma0:', mu0, sigma0
+                    else if ( muSigma_par == 2 ) then
+                        write(*,*) 'write you own mu-sigma parametrization in mgcamb.f90'
+                        stop
+                    else
+                        write(*,*) 'Please choose a model in params_MG.ini'
+                        stop
+                    end if
+
+                else if ( pure_MG_flag == 3 ) then ! Q-R
+                    write(*,*) '    MGCAMB: Q-R parametrization'
+                    QR_par = Ini%Read_Int('QR_par', 1)
+                    if ( QR_par == 1 ) then
+                        MGQfix=Ini%Read_Double('MGQfix', 0._dl)
+                        MGRfix=Ini%Read_Double('MGRfix', 0._dl)
+                    else if ( QR_par == 2 ) then
+                        Qnot=Ini%Read_Double('Qnot', 0._dl)
+                        Rnot=Ini%Read_Double('Rnot', 0._dl)
+                        sss=Ini%Read_Double('sss', 0._dl)
+                    else if ( QR_par == 3 ) then
+                        write(*,*) 'write your own QR parametrization in mgcamb.f90'
+                        stop
+                    else
+                        write(*,*) 'Please choose a model in params_MG.ini'
+                        stop
+                    end if
+
+                end if
+
+                ! Checking DE Model
+                DE_model = Ini%Read_Int('DE_model', 0)
+
+                write(*,*) 'DE_model:', DE_model
+
+                MGDE_pert = Ini%Read_Logical('MGDE_pert',.false.)
+
+                if ( DE_model == 1 ) then
+                    w0DE = Ini%Read_Double('w0DE', -1._dl)
+                else if ( DE_model == 2 ) then
+                    w0DE = Ini%Read_Double('w0DE', -1._dl)
+                    waDE = Ini%Read_Double('waDE', 0._dl)
+                else if ( DE_model == 3 ) then
+                    write(*,*) 'This is a reconstruction of w_DE(a)'
+
+					do i = 1, nnode+1
+						write( cTemp,'(i2)' ) i
+						X_arr(i+nnode-1) =  Ini%Read_Double('Funcofw('//trim(adjustl(cTemp))//')', 1._dl)
+					end do
+					!X_arr(2*nnode) = mgcamb_par_cache%omegav
+                else if ( DE_model == 4 ) then
+                    write(*,*) 'This will contain the reconstruction of rho_DE(a)'
+                    write(*,*) 'Not implemented yet'
+                    stop
+                else if ( DE_model /= 0 ) then
+                    write(*,*) 'Please choose a DE model'
+                    stop
+                end if
+
+
+
+            else if ( MG_flag == 2 ) then
+                alt_MG_flag = Ini%Read_Int('alt_MG_flag', 1)
+                if ( alt_MG_flag == 1 ) then
+                    write(*,*) '    MGCAMB: Linder Gamma'
+                    Linder_gamma = Ini%Read_Double('Linder_gamma', 0._dl)
+                else if ( alt_MG_flag == 2 ) then
+                    write(*,*) 'Please write your alternative MG model in mgcamb.f90'
+                    stop
+                else
+                    write(*,*) 'Please choose a model in params_MG.ini'
+                    stop
+                end if
+
+                ! Checking DE Model
+                DE_model = Ini%Read_Int('DE_model', 0)
+
+                if ( DE_model /= 0 ) then
+                    write(*,*) 'alternative MG models supported only with cosmological constant!'
+                end if
+
+
+            else if ( MG_flag == 3 ) then 
+
+                write(*,*) 'standard QSA with mu-gamma parametrization'
+
+                QSA_flag = Ini%Read_Int('QSA_flag', 1)
+
+                    if ( QSA_flag ==  1 ) then
+                        write(*,*) '        QSA f(R)'
+                        B1 = 4._dl/3._dl
+                        lambda1_2= Ini%Read_Double('B0',0._dl) ! it is considered as the B0 parameter here
+                        lambda1_2 = (lambda1_2*(299792458.d-3)**2)/(2._dl*mg_par_cache%H0**2)
+                        B2 = 0.5d0
+                        lambda2_2 = B1* lambda1_2
+                        ss = 4._dl
+
+                    else if ( QSA_flag ==  2 ) then
+                        write(*,*) '        QSA Symmetron'
+                        beta_star = Ini%Read_Double('beta_star', 0._dl)
+                        xi_star = Ini%Read_Double ('xi_star', 0._dl)
+                        a_star = Ini%Read_Double('a_star', 0._dl)
+                        GRtrans = a_star
+
+                    else if ( QSA_flag ==  3 ) then
+                        write(*,*) '        QSA Dilaton'
+                        ! GENERALIZED DILATON
+                        beta0 = Ini%Read_Double('beta0', 0._dl)
+                        xi0 = Ini%Read_Double('xi0', 0._dl)
+                        DilR = Ini%Read_Double('DilR', 0._dl)
+                        DilS = Ini%Read_Double('DilS', 0._dl)
+
+                    else if ( QSA_flag ==  4 ) then
+                        write(*,*) '        QSA Hu-Sawicki f(R)'
+                        F_R0 = Ini%Read_Double('F_R0', 0._dl)
+                        FRn = Ini%Read_Double('FRn', 0._dl)
+                        beta0 = 1._dl/sqrt(6._dl)
+                    else if ( QSA_flag ==  5 ) then
+                        write(*,*) 'Please write your QSA model in mgcamb.f90'
+                        stop
+
+                    end if
+
+
+                    ! Checking DE Model
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    if ( DE_model /= 0 ) then
+                        write(*,*) 'QSA models supported only with cosmological constant!'
+                    end if
+ 
+
+            else if (MG_flag == 4) then
+
+                CDM_flag = Ini%Read_Int('CDM_flag', 1)
+                QSA_flag = Ini%Read_Int('QSA_flag', 1)
+
+                write(*,*) 'only-CDM coupling QSA models'
+
+                if(CDM_flag == 1) then 
+                    write(*,*) 'CDM QSA'
+                else
+                    write(*,*) 'Please choose flag properly'
+                    stop
+                end if
+
+                if(CDM_flag == 1) then 
+
+                    if ( QSA_flag ==  2 ) then
+                        write(*,*) '        QSA Symmetron'
+                        beta_star = Ini%Read_Double('beta_star', 0._dl)
+                        xi_star = Ini%Read_Double ('xi_star', 0._dl)
+                        a_star = Ini%Read_Double('a_star', 0._dl)
+                        GRtrans = a_star
+
+                    else if ( QSA_flag ==  3 ) then
+                        write(*,*) '        QSA Dilaton'
+                        ! GENERALIZED DILATON
+                        beta0 = Ini%Read_Double('beta0', 0._dl)
+                        xi0 = Ini%Read_Double('xi0', 0._dl)
+                        DilR = Ini%Read_Double('DilR', 0._dl)
+                        DilS = Ini%Read_Double('DilS', 0._dl)
+
+                    else if ( QSA_flag ==  4 ) then
+                        write(*,*) '        QSA Hu-Sawicki f(R)'
+                        F_R0 = Ini%Read_Double('F_R0', 0._dl)
+                        FRn = Ini%Read_Double('FRn', 0._dl)
+                        beta0 = 1._dl/sqrt(6._dl)
+
+                    else
+                        write(*,*) 'please choose QSA_flag properly'
+                        stop
+
+                    end if
+
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    if ( DE_model /= 0 ) then
+                        write(*,*) 'QSA models supported only with cosmological constant!'
+                    end if                    
+
+                end if 
+
+            else if (MG_flag == 5) then
+
+                write(*,*) 'direct mu-Sigma parametrization'
+
+                muSigma_flag = Ini%Read_Int('muSigma_flag', 1)
+            
+                if (muSigma_flag == 1) then
+
+                    pure_MG_flag = Ini%Read_Int('pure_MG_flag', 1)
+
+                    if ( pure_MG_flag == 1 ) then ! mu-gamma
+                        write(*,*) '    MGCAMB: mu-gamma parametrization'
+                        mugamma_par = Ini%Read_Int('mugamma_par' , 1)
+                        if ( mugamma_par == 1 ) then
+                            write(*,*) '        BZ parametrization'
+                            B1= Ini%Read_Double('B1',0._dl)
+                            B2= Ini%Read_Double('B2',0._dl)
+                            lambda1_2= Ini%Read_Double('lambda1_2',0._dl)
+                            lambda2_2= Ini%Read_Double('lambda2_2',0._dl)
+                            ss= Ini%Read_Double('ss',0._dl)
+                        else if ( mugamma_par == 2 ) then
+                            write(*,*) '        Planck parametrization'
+                            E11     = Ini%Read_Double('E11', 0._dl)
+                            E22     = Ini%Read_Double('E22', 0._dl)
+                            write(*,*) 'E11, E22', E11, E22
+                        else if ( mugamma_par == 3 ) then
+                            write(*,*) '        Effective Newton constant'
+                            ga      = Ini%Read_Double('ga', 0._dl)
+                            nn      = Ini%Read_Double('nn', 0._dl)
+                            write(*,*) 'ga, nn:', ga, nn
+                        else
+                            write(*,*) ' write your own mu-gamma parametrization in mgcamb.f90'
+                            stop
+                        end if
+
+
+                    else if ( pure_MG_flag == 2 ) then ! mu-Sigma
+                        write(*,*) '    MGCAMB: mu-Sigma parametrization'
+                        muSigma_par = Ini%Read_Int('musigma_par', 1)
+                        if ( muSigma_par == 1 ) then
+                            write(*,*) '        DES parametrization'
+                            mu0     = Ini%Read_Double('mu0', 0._dl)
+                            sigma0  = Ini%Read_Double('sigma0', 0._dl)
+                            write(*,*) 'mu0, sigma0:', mu0, sigma0
+                        else if ( muSigma_par == 2 ) then
+                            write(*,*) 'write you own mu-sigma parametrization in mgcamb.f90'
+                            stop
+                        else
+                            write(*,*) 'Please choose a model in params_MG.ini'
+                            stop
+                        end if 
+                    end if
+
+                    ! Checking DE Model
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    write(*,*) 'DE_model:', DE_model
+
+                    MGDE_pert = Ini%Read_Logical('MGDE_pert',.false.)
+
+                    if ( DE_model == 1 ) then
+                        w0DE = Ini%Read_Double('w0DE', -1._dl)
+                    else if ( DE_model == 2 ) then
+                        w0DE = Ini%Read_Double('w0DE', -1._dl)
+                        waDE = Ini%Read_Double('waDE', 0._dl)
+                    else if ( DE_model == 3 ) then
+                        write(*,*) 'This is a reconstruction of w_DE(a)'
+
+                        do i = 1, nnode+1
+                            write( cTemp,'(i2)' ) i
+                            X_arr(i+nnode-1) =  Ini%Read_Double('Funcofw('//trim(adjustl(cTemp))//')', 1._dl)
+                        end do
+                        !X_arr(2*nnode) = mgcamb_par_cache%omegav
+
+                    else if ( DE_model == 4 ) then
+                        write(*,*) 'This will contain the reconstruction of rho_DE(a)'
+                        write(*,*) 'Not implemented yet'
+                        stop
+                    else if ( DE_model /= 0 ) then
+                        write(*,*) 'Please choose a DE model'
+                        stop
+                    end if
+
+                else if(muSigma_flag == 2) then 
+
+                    alt_MG_flag = Ini%Read_Int('alt_MG_flag', 1)
+                    if ( alt_MG_flag == 1 ) then
+                        write(*,*) '    MGCAMB: Linder Gamma'
+                        Linder_gamma = Ini%Read_Double('Linder_gamma', 0._dl)
+                    else if ( alt_MG_flag == 2 ) then
+                        write(*,*) 'Please write your alternative MG model in mgcamb.f90'
+                        stop
+                    else
+                        write(*,*) 'Please choose a model in params_MG.ini'
+                        stop
+                    end if
+
+                    ! Checking DE Model
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    if ( DE_model /= 0 ) then
+                        write(*,*) 'alternative MG models supported only with cosmological constant!'
+                    end if
+                
+                else if (muSigma_flag == 3) then 
+
+                    write(*,*) 'standard QSA for all-matter case'
+
+                    QSA_flag = Ini%Read_Int('QSA_flag', 1)
+
+                    if ( QSA_flag ==  1 ) then
+                        write(*,*) '        QSA f(R)'
+                        B1 = 4._dl/3._dl
+                        lambda1_2= Ini%Read_Double('B0',0._dl) ! it is considered as the B0 parameter here
+                        lambda1_2 = (lambda1_2*(299792458.d-3)**2)/(2._dl*mg_par_cache%H0**2)
+                        B2 = 0.5d0
+                        lambda2_2 = B1* lambda1_2
+                        ss = 4._dl
+
+                    else if ( QSA_flag ==  2 ) then
+                        write(*,*) '        QSA Symmetron'
+                        beta_star = Ini%Read_Double('beta_star', 0._dl)
+                        xi_star = Ini%Read_Double ('xi_star', 0._dl)
+                        a_star = Ini%Read_Double('a_star', 0._dl)
+                        GRtrans = a_star
+
+                    else if ( QSA_flag ==  3 ) then
+                        write(*,*) '        QSA Dilaton'
+                        ! GENERALIZED DILATON
+                        beta0 = Ini%Read_Double('beta0', 0._dl)
+                        xi0 = Ini%Read_Double('xi0', 0._dl)
+                        DilR = Ini%Read_Double('DilR', 0._dl)
+                        DilS = Ini%Read_Double('DilS', 0._dl)
+
+                    else if ( QSA_flag ==  4 ) then
+                        write(*,*) '        QSA Hu-Sawicki f(R)'
+                        F_R0 = Ini%Read_Double('F_R0', 0._dl)
+                        FRn = Ini%Read_Double('FRn', 0._dl)
+                        beta0 = 1._dl/sqrt(6._dl)
+
+                    else
+                        write(*,*) 'please choose QSA_flag properly'
+                        stop
+
+                    end if
+
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    if ( DE_model /= 0 ) then
+                        write(*,*) 'QSA models supported only with cosmological constant!'
+                    end if  
+
+                else if(muSigma_flag == 4) then 
+
+                    write(*,*) 'Reconstruction'
+                    do i = 1, nnode+1
+                        write( cTemp,'(i2)' ) i
+                        mu_arr(i+nnode-1) =  Ini%Read_Double('MGCAMB_Mu_idx('//trim(adjustl(cTemp))//')', 1._dl)
+                        Sigma_arr(i+nnode-1) =  Ini%Read_Double('MGCAMB_Sigma_idx('//trim(adjustl(cTemp))//')', 1._dl)
+                    end do
+
+                    DE_model = Ini%Read_Int('DE_model', 0)
+
+                    write(*,*) 'DE_model:', DE_model
+
+                    if ( DE_model == 1 ) then
+                        w0DE = Ini%Read_Double('w0DE', -1._dl)
+                    else if ( DE_model == 2 ) then
+                        w0DE = Ini%Read_Double('w0DE', -1._dl)
+                        waDE = Ini%Read_Double('waDE', 0._dl)
+                    else if ( DE_model == 3 ) then
+                        write(*,*) 'This is a reconstruction of w_DE(a)'
+                        do i = 1, nnode+1
+                            write( cTemp,'(i2)' ) i
+                            X_arr(i+nnode-1) =  Ini%Read_Double('Funcofw('//trim(adjustl(cTemp))//')', 1._dl)
+                        end do
+                        !(2*nnode) = mgcamb_par_cache%omegav
+                
+                    else
+                        write(*,*) 'Please choose a DE model'
+                        stop
+                    end if             
+
+                else 
+                    write(*,*) 'Please write your own mu-Sigma model'
+                    stop 
+                end if
+
+			else if ( MG_flag == 6) then
+
+				write(*,*) 'Reconstruction'
+				do i = 1, nnode+1
+					write( cTemp,'(i2)' ) i
+					mu_arr(i+nnode-1) =  Ini%Read_Double('MGCAMB_Mu_idx('//trim(adjustl(cTemp))//')', 1._dl)
+					Sigma_arr(i+nnode-1) =  Ini%Read_Double('MGCAMB_Sigma_idx('//trim(adjustl(cTemp))//')', 1._dl)
+				end do
+
+				DE_model = Ini%Read_Int('DE_model', 0)
+				write(*,*) 'DE_model:', DE_model
+
+				if ( DE_model == 1 ) then
+					w0DE = Ini%Read_Double('w0DE', -1._dl)
+				else if ( DE_model == 2 ) then
+					w0DE = Ini%Read_Double('w0DE', -1._dl)
+					waDE = Ini%Read_Double('waDE', 0._dl)
+				else if ( DE_model == 3 ) then
+					write(*,*) 'This is a reconstruction of w_DE(a)'
+					do i = 1, nnode+1
+						write( cTemp,'(i2)' ) i
+						X_arr(i+nnode-1) =  Ini%Read_Double('Funcofw('//trim(adjustl(cTemp))//')', 1._dl)
+					end do
+					!X_arr(2*nnode) = mgcamb_par_cache%omegav
+				
+				else 
+					write(*,*) 'Please choose a DE model'
+					stop
+				end if
+
+            else 
+                write(*,*) 'Please choose a model'
+                stop
+            end if
+
+        end if 
+
+
+    end subroutine MGCAMB_read_model_params
+
+! ---------------------------------------------------------------------------------------------
+    !> Subroutine that prints to screen the MGCAMB header.
+    subroutine print_MGCAMB_header
+
+        implicit none
+
+        ! print the header:
+        write(*,'(a)') "***************************************************************"
+        write(*,'(a)') "     __  _________  ________   __  ______  "
+        write(*,'(a)') "    /  \/  / ____/ / ___/ _ | /  |/  / _ ) "
+        write(*,'(a)') "   / /\_/ / /_,-, / /__/ __ |/ /|_/ / _  | "
+        write(*,'(a)') "  /_/  /_/_____/  \___/_/ |_/_/  /_/____/  "//" "//MGCAMB_version
+        write(*,'(a)') "  "
+        write(*,'(a)') "        Modified Growth with CAMB "
+        write(*,'(a)') "  "
+        write(*,'(a)') "***************************************************************"
+
+    end subroutine print_MGCAMB_header
 
     ! ---------------------------------------------------------------------------------------------
     !> Subroutine that sets the mgcamb_cache to zero

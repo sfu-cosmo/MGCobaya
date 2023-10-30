@@ -2,9 +2,6 @@
     use precision
     use interpolation
     use classes
-!>MGCAMB MOD START
-!    use MGCAMB
-!>MGCAMB MOD END
     implicit none
 
     private

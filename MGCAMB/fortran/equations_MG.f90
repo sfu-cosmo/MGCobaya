@@ -6,7 +6,7 @@
     use DarkEnergyInterface
     !> MGCAMB MOD START
 	use MGCAMB
-	!< MDGCAMB MOD END
+	!< MGCAMB MOD END
 
     implicit none
     class(CAMBdata) :: this
@@ -17,14 +17,14 @@
 	Type(MGCAMB_timestep_cache) :: mgcamb_cache
 	!< MGCAMB MOD END
 
-	!> MGCAMB MOD START: modifying the backgrounda
+	!> MGCAMB MOD START: modifying the background
 	if ( MG_flag == 0 ) then
     	call this%CP%DarkEnergy%BackgroundDensityAndPressure(this%grhov, a, grhov_t)
 		grhoa2 = this%grho_no_de(a) +  grhov_t * a**2
 	else if( MG_flag /= 0 ) then !< MGCAMB modifies the background as well
 		call MGCAMB_DarkEnergy( a, mgcamb_par_cache, mgcamb_cache )
 		grhoa2 = this%grho_no_de(a) +  mgcamb_cache%grhov_t * a**2
-	end if 
+	end if
 
     if (grhoa2 <= 0) then
         call GlobalError('Universe stops expanding before today (recollapse not supported)', error_unsupported_params)
@@ -52,14 +52,14 @@
     character(LEN=*), parameter :: Eqns_name = 'cdm_gauge'
 
     logical, parameter :: plot_evolve = .false. !for outputing time evolution
-	!> MCAMB MOD START: adding a new variable vc
-   ! integer, parameter :: basic_num_eqns = 4
-	integer, parameter :: basic_num_eqns = 5
-	!< MGCAMB MOD END
+    !> MGCAMB MOD START: adding a new variable vc
+    ! integer, parameter :: basic_num_eqns = 4
+    integer, parameter :: basic_num_eqns = 5
+    !< MGCAMB MOD END
     integer, parameter :: ix_etak=1, ix_clxc=2, ix_clxb=3, ix_vb=4 !Scalar array indices for each quantity
-	!> MGCAMB MOD START:
-	integer, parameter :: ix_vc = 5
-	!< MGCAMB MOD END
+    !> MGCAMB MOD START:
+    integer, parameter :: ix_vc = 5
+    !< MGCAMB MOD END
     integer, parameter :: ixt_H = 1, ixt_shear = 2 !tensor indices
 
     logical :: DoTensorNeutrinos = .true.
@@ -158,7 +158,7 @@
         !Workaround for ifort, gives class pointer to avoid creating temps and huge slow down
         class(TThermoData), pointer :: ThermoData => null()
 
-        real, pointer :: OutputTransfer(:) => null()
+        real(dl), pointer :: OutputTransfer(:) => null()
         real(dl), pointer :: OutputSources(:) => null()
         real(dl), pointer :: CustomSources(:) => null()
         integer :: OutputStep = 0
@@ -308,13 +308,14 @@
     if (CP%DoLateRadTruncation) then
         if (.not. EV%no_nu_multpoles) & !!.and. .not. EV%has_nu_relativistic .and. tau_switch_nu_massless ==noSwitch)  &
             tau_switch_no_nu_multpoles= &
-            !max(15/EV%k_buf*CP%Accuracy%AccuracyBoost,min(State%taurend,EV%ThermoData%matter_verydom_tau))
-            max(15/EV%k_buf*20._dl*CP%Accuracy%AccuracyBoost,min(State%taurend,EV%ThermoData%matter_verydom_tau))
+         !   max(15/EV%k_buf*CP%Accuracy%AccuracyBoost,min(State%taurend,EV%ThermoData%matter_verydom_tau))
+            max(15/EV%k_buf*20*CP%Accuracy%AccuracyBoost,min(State%taurend,EV%ThermoData%matter_verydom_tau))
+           ! write(*,*) 
 
-        !if (.not. EV%no_phot_multpoles .and. (.not.CP%WantCls .or. EV%k_buf>0.03*CP%Accuracy%AccuracyBoost)) &
-         !   tau_switch_no_phot_multpoles =max(15/EV%k_buf,State%taurend)*CP%Accuracy%AccuracyBoost
-        if (.not. EV%no_phot_multpoles .and. (.not.CP%WantCls .or. EV%k_buf>0.03*20._dl*CP%Accuracy%AccuracyBoost)) &
-            tau_switch_no_phot_multpoles =max(15/EV%k_buf,State%taurend)*CP%Accuracy%AccuracyBoost*20._dl         
+       ! if (.not. EV%no_phot_multpoles .and. (.not.CP%WantCls .or. EV%k_buf>0.03*CP%Accuracy%AccuracyBoost)) &
+       !     tau_switch_no_phot_multpoles =max(15/EV%k_buf,State%taurend)*CP%Accuracy%AccuracyBoost
+        if (.not. EV%no_phot_multpoles .and. (.not.CP%WantCls .or. EV%k_buf>0.03*20*CP%Accuracy%AccuracyBoost)) &
+            tau_switch_no_phot_multpoles =max(15/EV%k_buf,State%taurend)*CP%Accuracy%AccuracyBoost*20
     end if
 
     next_switch = min(tau_switch_ktau, tau_switch_nu_massless,EV%TightSwitchoffTime, tau_switch_nu_massive, &
@@ -540,9 +541,10 @@
     subroutine SetupScalarArrayIndices(EV, max_num_eqns)
     !Set up array indices after the lmax have been decided
     use MassiveNu
-	!> MGCAMB MOD START
-	use MGCAMB
-	!< MGCAMB MOD END
+    !> MGCAMB MOD START
+    use MGCAMB
+    !< MGCAMB MOD END
+
     !Set the numer of equations in each hierarchy, and get total number of equations for this k
     type(EvolutionVars) EV
     integer, intent(out), optional :: max_num_eqns
@@ -574,16 +576,16 @@
     maxeq = maxeq +  (EV%lmaxg+1)+(EV%lmaxnr+1)+EV%lmaxgpol-1
 
     !Dark energy
-	!> MGCAMB MOD START: 
+    !> MGCAMB MOD START: 
     if ((.not. CP%DarkEnergy%is_cosmological_constant .and. MG_flag == 0) &
- 		.or. (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
+        .or. (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
         EV%w_ix = neq + 1
         neq = neq + CP%DarkEnergy%num_perturb_equations
         maxeq = maxeq + CP%DarkEnergy%num_perturb_equations
     else
         EV%w_ix = 0
     end if
-	!< MGCAMB MOD END
+    !< MGCAMB MOD END
 
     !Sources
     if (CP%Evolve_delta_xe) then
@@ -1032,17 +1034,16 @@
 
     end subroutine SwitchToMassiveNuApprox
 
-    subroutine MassiveNuVarsOut(EV,y,yprime,a,adotoa,grho,gpres,dgrho,dgq,dgpi, dgpi_diff,pidot_sum,clxnu_all,dgpi_w_sum)
+    subroutine MassiveNuVarsOut(EV,y,yprime,a,adotoa,grho,gpres,dgrho,dgq,dgpi, dgpi_diff,pidot_sum,clxnu_all, dgpi_w_sum)
     implicit none
     type(EvolutionVars) EV
     real(dl) :: y(EV%nvar), yprime(EV%nvar),a, adotoa
     real(dl), optional :: grho,gpres,dgrho,dgq,dgpi, dgpi_diff,pidot_sum,clxnu_all
 
-	!> MGCAMB MOD START
-	real(dl), optional :: dgpi_w_sum
-	real(dl) :: wnu
-	!< MGCAMB MOD END
-
+    !> MGCAMB MOD START
+    real(dl), optional :: dgpi_w_sum
+    real(dl) :: wnu
+    !< MGCAMB MOD END
 
     !grho = a^2 kappa rho
     !gpres = a^2 kappa p
@@ -1065,9 +1066,9 @@
         !Get density and pressure as ratio to massless by interpolation from table
         call ThermalNuBack%rho_P(a*State%nu_masses(nu_i),rhonu,pnu)
 
-		!> MGCAMB MOD START: calculating wnu
-		wnu = pnu/rhonu
-		!< MGCAMB MOD END
+        !> MGCAMB MOD START: calculating wnu
+        wnu = pnu/rhonu
+        !< MGCAMB MOD END
 
         if (EV%MassiveNuApprox(nu_i)) then
             clxnu=y(EV%nu_ix(nu_i))
@@ -1101,15 +1102,14 @@
         if (present(dgpi_diff)) dgpi_diff = dgpi_diff + pinu*(3*gpnu_t-grhonu_t)
         if (present(pidot_sum)) pidot_sum = pidot_sum + grhonu_t*pinudot
 
-		!> MGCAMB MOD START: calculating dgpi_w_sum
-		if (present(dgpi_w_sum)) dgpi_w_sum = dgpi_w_sum + grhonu_t*pinu * (3.d0*wnu + 2.d0)
-		!< MGCAMB MOD END
+        !> MGCAMB MOD START: calculating dgpi_w_sum
+        if (present(dgpi_w_sum)) dgpi_w_sum = dgpi_w_sum + grhonu_t*pinu * (3.d0*wnu + 2.d0)
+        !< MGCAMB MOD END
 
     end do
     if (present(grho)) grho = grho  + grhonu
     if (present(dgrho)) dgrho= dgrho + dgrhonu
     if (present(clxnu_all)) clxnu_all = dgrhonu/grhonu
-
 
     end subroutine MassiveNuVarsOut
 
@@ -1811,12 +1811,12 @@
     integer l,i, nu_i, j, ind
     integer, parameter :: i_clxg=1,i_clxr=2,i_clxc=3, i_clxb=4, &
         i_qg=5,i_qr=6,i_vb=7,i_pir=8, i_eta=9, i_aj3r=10,i_clxde=11,i_vde=12
-	!> MGCAMB MOD START: adding index for vc
-	integer, parameter :: i_vc = 13
-	!< MDGCAMB MOD END
-	!> MGCAMB MOD START
+    !> MGCAMB MOD START: adding index for vc
+    integer, parameter :: i_vc = 13
+    !< MDGCAMB MOD END
+    !> MGCAMB MOD START
     integer, parameter :: i_max = i_vc
-	!< MDGCAMB MOD END
+    !< MDGCAMB MOD END
     real(dl) initv(6,1:i_max), initvec(1:i_max)
 
     nullify(EV%OutputTransfer) !Should not be needed, but avoids issues in ifort 14
@@ -1903,9 +1903,9 @@
     initv(1,i_pir)=chi*4._dl/3*x2/Rp15*(1+omtau/4*(4*Rv-5)/(2*Rv+15))
     initv(1,i_aj3r)=chi*4/21._dl/Rp15*x3
     initv(1,i_eta)=-chi*2*EV%Kf(1)*(1 - x2/12*(-10._dl/Rp15 + EV%Kf(1)))
-	!> MGCAMB MOD START
-	initv(1,i_vc)= 0._dl
-	!< MDGCAMB MOD END
+    !> MGCAMB MOD START
+    initv(1,i_vc)= 0._dl
+    !< MDGCAMB MOD END
 
     if (CP%Scalar_initial_condition/= initial_adiabatic) then
         !CDM isocurvature
@@ -1920,9 +1920,9 @@
         initv(2,i_pir)=-Rc*omtau*x2/3/(2*Rv+15._dl)
         initv(2,i_eta)= Rc*omtau*(1._dl/3 - omtau/8)*EV%Kf(1)
         initv(2,i_aj3r)=0
-		!> MGCAMB MOD START
-		initv(2,i_vc)= 0._dl
-		!< MGCAMB MOD END
+        !> MGCAMB MOD START
+        initv(2,i_vc)= 0._dl
+        !< MGCAMB MOD END
 
         !Baryon isocurvature
         if (Rc==0) call MpiStop('Isocurvature initial conditions assume non-zero dark matter')
@@ -1943,8 +1943,8 @@
         initv(4,i_vb)=0.75_dl*iqg
         initv(4,i_pir)=x2/Rp15
         initv(4,i_eta)=EV%Kf(1)*Rv/Rp15/3*x2
-		!> MGCAMB MOD START
-		initv(4,i_vc) = 0._dl
+        !> MGCAMB MOD START
+        initv(4,i_vc) = 0._dl
 		!< MGCAMB MOD END
 
         !neutrino isocurvature velocity mode
@@ -1962,7 +1962,7 @@
         initv(5,i_aj3r) = 3._dl/7*x2/(4*Rv+5)
 		!> MGCAMB MOD START
 		initv(5,i_vc) = 0._dl
-		!< MGCAMB MOD END
+		!< MGCAMB MOD END 
 
         !quintessence isocurvature mode
     end if
@@ -1988,9 +1988,9 @@
     y(ix_clxb)=InitVec(i_clxb)
     y(ix_vb)=InitVec(i_vb)
 
-	!> MGCAMB MOD START: CDM velocity
-	y(ix_vc) = InitVec(i_vc)
-	!< MGCAMB MOD END
+    !> MGCAMB MOD START: CDM velocity
+    y(ix_vc) = InitVec(i_vc) 
+    !< MDGCAMB MOD END
 
     !  Photons
     y(EV%g_ix)=InitVec(i_clxg)
@@ -2189,7 +2189,7 @@
     implicit none
     type(EvolutionVars) EV
     real(dl), intent(in) :: tau
-    real, target :: Arr(:)
+    real(dl), target :: Arr(:)
     real(dl) y(EV%nvar),yprime(EV%nvar)
 
     yprime = 0
@@ -2199,6 +2199,7 @@
     Arr(Transfer_kh+1:Transfer_max) = Arr(Transfer_kh+1:Transfer_max)/EV%k2_buf
 
     end subroutine outtransf
+
 
     subroutine derivs(EV,n,tau,ay,ayprime)
     !  Evaluate the time derivatives of the scalar perturbations
@@ -2249,11 +2250,12 @@
     real(dl) m,mdot,beta,betadot
     real(dl) mu, mudot
     real(dl) psiN, phiN 
-    real(dl) m2,beta2 
+    real(dl) m2,beta2
     real(dl) MG_alpha
+    real(dl) muall, mucdm 
 
     real(dl) vc, vcdot 
-	real(dl) MGDE_ISW,  w_MGDE    
+	real(dl) MGDE_ISW, w_MGDE   
 
     !> MGCAMB MOD START: adding MGCAMB parameters
     type(MGCAMB_timestep_cache) :: mgcamb_cache
@@ -2307,7 +2309,7 @@
         call MGCAMB_timestep_cache_nullify( mgcamb_cache )
         call MGCAMB_DarkEnergy( a, mgcamb_par_cache, mgcamb_cache )
         grhov_t = mgcamb_cache%grhov_t
-        call MGCAMB_DE_EoS(a, w_MGDE)
+		call MGCAMB_DE_EoS(a, w_MGDE)
     end if
     !< MGCAMB MOD END
 
@@ -2369,7 +2371,7 @@
             clxr=-4*dz/k
             qr=-4._dl/3*z
             pir=0
-    else ! tempmodel /=0
+        else ! tempmodel /=0
          ! this is the old RSA..
             clxr=2*(grhoc_t*clxc+grhob_t*clxb)/3/k**2
             qr= clxr*k/sqrt((grhoc_t+grhob_t)/3)*(2/3._dl)
@@ -2385,16 +2387,16 @@
 
     pig=0
     if (EV%no_phot_multpoles) then
-    if  ( tempmodel == 0 ) then
+        if  ( tempmodel == 0 ) then
             if (.not. EV%no_nu_multpoles) then
-             z=(0.5_dl*dgrho/k + etak)/adotoa
+                z=(0.5_dl*dgrho/k + etak)/adotoa
                 dz= -adotoa*z - 0.5_dl*dgrho/k
                 clxg=-4*dz/k-4/k*opacity*(vb+z)
                 qg=-4._dl/3*z
             else
                 clxg=clxr-4/k*opacity*(vb+z)
                 qg=qr
-        end if
+            end if
         pig=0
         else ! tempmodel /= 0
             clxg=2*(grhoc_t*clxc+grhob_t*clxb)/3/k**2
@@ -2419,7 +2421,7 @@
     photbar=grhog_t/grhob_t
     pb43=4._dl/3*photbar
 
-    !> MGCAMB MOD START
+    !> MGCMAB MOD START: perturb DE only in default CAMB
     if (.not. EV%is_cosmological_constant .and. MG_flag == 0)  then
         call State%CP%DarkEnergy%PerturbedStressEnergy(dgrho_de, dgq_de, &
             a, dgq, dgrho, grho, grhov_t, w_dark_energy_t, gpres_noDE, etak, &
@@ -2497,6 +2499,7 @@
 
         beta2 = beta**2
         m2 = m**2
+
 
         ! 3. Computing the shear perturbation sigma
         call MGCAMB_compute_sigma( a, mgcamb_par_cache, mgcamb_cache )
@@ -2650,27 +2653,26 @@
             !eta*k equation
                 sigma=(z+1.5_dl*dgq/k2)
                 ayprime(ix_etak)=0.5_dl*dgq
-            else
+        else
             sigma=(z+1.5_dl*dgq/k2)/EV%Kf(1)
             ayprime(ix_etak)=0.5_dl*dgq + State%curv*z
-            end if 
+        end if 
     end if 
     !< MGCAMB MOD END
 
-    !> MGCAMB MOD START
+    !> MGCAMB MOD START: DE perturbed only if not MG
     if (.not. EV%is_cosmological_constant .and. MG_flag == 0 ) &
         call State%CP%DarkEnergy%PerturbationEvolve(ayprime, w_dark_energy_t, &
         EV%w_ix, a, adotoa, k, z, ay)
-
     if (.not. MGDE_const .and. MG_flag /= 0 .and. MGDE_pert) &
         call State%CP%DarkEnergy%PerturbationEvolve(ayprime, w_MGDE, &
         EV%w_ix, a, adotoa, k, z, ay)
-    !< MGCAMB MOD END
+     !< MGCAMB MOD END
 
     !  CDM equation of motion
     if ( tempmodel == 4 ) then 
 
-        if(CDM_flag == 1) then ! CDM QSA
+        if(CDM_flag == 1) then !CDM QSA
 
             clxcdot=-k*(z+vc) - beta*betadot*(dgrhoc - 3._dl*mgcamb_cache%grhoc_t*MG_alpha*adotoa) &
                     /(k2+(m**2._dl)*a**2._dl)
@@ -2729,10 +2731,10 @@
         if ( MG_flag == 0 ) then
             gpres = gpres_noDE + w_dark_energy_t*grhov_t
             adotdota=(adotoa*adotoa-gpres)/2
-    else
-        gpres=gpres_noDE + mgcamb_cache%gpresv_t
-        adotdota=(adotoa*adotoa-gpres)/2
-    end if
+        else
+            gpres=gpres_noDE + mgcamb_cache%gpresv_t
+            adotdota=(adotoa*adotoa-gpres)/2
+        end if
         !< MGCAMB MOD END
 
         pig = 32._dl/45/opacity*k*(sigma+vb)
@@ -2752,7 +2754,7 @@
             if ( tempmodel == 0 ) then
                 ! Define shear derivative to first order
                 sigmadot = -2*adotoa*sigma-dgs/k+etak
-        else
+            else
                 sigmadot = mgcamb_cache%sigmadot
             end if
             !< MGCAMB MOD END
@@ -2785,20 +2787,16 @@
 
     ayprime(ix_vb)=vbdot
 
-
     if ( tempmodel == 4 ) then
 
-        if(CDM_flag == 1) then  
+        if(CDM_flag == 1) then  ! CDM QSA
           vcdot = -adotoa*vc - k*beta2*(dgrhoc - 3._dl*mgcamb_cache%grhoc_t*MG_alpha*adotoa)&
                             /(k2+(m**2._dl)*a**2._dl)
 
-
         end if 
-
 
     else
         vcdot = 0._dl 
-
     end if 
 
     ayprime(ix_vc) = vcdot 
@@ -3078,14 +3076,13 @@
                 octgdot=ayprime(EV%g_ix+3)
             end if
         end if
-        !>MGCAMB MOD START
+		!>MGCAMB MOD START
         if ((EV%is_cosmological_constant .and. MG_flag == 0) &
- 		    .or. ( MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
-
+            .or. ( MGDE_const .and. MG_flag /= 0 .and. MGDE_pert)) then
             dgrho_de=0
             dgq_de=0
         end if
-        !>MGCAMB END START
+        !>MGCAMB MOD END
 
         dgpi  = grhor_t*pir + grhog_t*pig
         dgpi_diff = 0  !sum (3*p_nu -rho_nu)*pi_nu
@@ -3096,28 +3093,26 @@
                 dgpi_diff=dgpi_diff, pidot_sum=pidot_sum)
         end if
 
-        !> MGCAMB MOD START: modifying hte expansion histroy
+        !> MGCAMB MOD START: modifying hte expansion history
         if ( MG_flag == 0 ) then
             gpres = gpres_noDE + w_dark_energy_t*grhov_t
         else
             gpres= gpres_noDE  + mgcamb_cache%gpresv_t
         end if
-        !> MGCAMB MOD END
 
-        if(MG_flag == 0 ) then
+		if(MG_flag == 0 ) then
             diff_rhopi = pidot_sum - (4*dgpi+ dgpi_diff)*adotoa + &
                 State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
                 gpres, w_dark_energy_t, State%grhok, adotoa, &
                 EV%kf(1), k, grhov_t, z, k2, ayprime, ay, EV%w_ix)
-        else if(MG_flag /= 0 .and. (.not. MGDE_const) .and. MGDE_pert) then
+		else if(MG_flag /= 0 .and. (.not. MGDE_const) .and. MGDE_pert) then
 			diff_rhopi = pidot_sum - (4*dgpi+ dgpi_diff)*adotoa + &
 				State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
 				gpres, w_MGDE, State%grhok, adotoa, &
 				1.d0, k, grhov_t, z, k2, ayprime, ay, EV%w_ix)
-
-            MGDE_ISW =  State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
-                    gpres, w_MGDE, State%grhok, adotoa, &
-                    1.d0, k, grhov_t, z, k2, ayprime, ay, EV%w_ix)
+			MGDE_ISW =  State%CP%DarkEnergy%diff_rhopi_Add_Term(dgrho_de, dgq_de, grho, &
+						gpres, w_MGDE, State%grhok, adotoa, &
+						1.d0, k, grhov_t, z, k2, ayprime, ay, EV%w_ix)
 		else
 			diff_rhopi = pidot_sum - (4*dgpi+ dgpi_diff)*adotoa
 			MGDE_ISW = 0._dl
@@ -3131,13 +3126,6 @@
         end if
         !< MGCAMB MOD END
 
-        !> MGCAMB MOD START: modifying hte expansion histroy
-        if ( MG_flag == 0 ) then
-            gpres = gpres_noDE + w_dark_energy_t*grhov_t
-        else
-            gpres= gpres_noDE  + mgcamb_cache%gpresv_t
-        end if
-
         !> MGCAMB MOD START: Weyl Potential
         if ( tempmodel == 0 ) then
             phi = -((dgrho +3*dgq*adotoa/k)/EV%Kf(1) + dgpi)/(2*k2)
@@ -3145,7 +3133,7 @@
             phiN = -psiN - ((dgrho +3*dgq*adotoa/k)/EV%Kf(1) + dgpi)/k2
         else
            phi = (mgcamb_cache%MG_psi+mgcamb_cache%MG_phi)/2._dl
-    	end if
+        end if
         !< MGCAMB MOD END
 
         if (associated(EV%OutputTransfer)) then
@@ -3163,15 +3151,15 @@
             if ( tempmodel == 0 ) then
                 EV%OutputTransfer(Transfer_Weyl) = k2*phi
             else
-        		EV%OutputTransfer(Transfer_Weyl) = (mgcamb_cache%MG_psi+mgcamb_cache%MG_phi)*k**2._dl/2._dl
-       		end if
+                EV%OutputTransfer(Transfer_Weyl) = (mgcamb_cache%MG_psi+mgcamb_cache%MG_phi)*k**2._dl/2._dl
+            end if
             !< MGCAMB MOD END
 
             EV%OutputTransfer(Transfer_Newt_vel_cdm)=  -k*(vc+sigma)/adotoa
             EV%OutputTransfer(Transfer_Newt_vel_baryon) = -k*(vb + sigma)/adotoa
             EV%OutputTransfer(Transfer_vel_baryon_cdm) = vb - vc
 
-           
+
             if (State%CP%do21cm) then
                 Tspin = State%CP%Recomb%T_s(a)
                 xe = State%CP%Recomb%x_e(a)
@@ -3309,17 +3297,17 @@
 
                     call c_f_procpointer(CP%CustomSources%c_source_func,custom_sources_func)
 
-					!>MGCAMB MOD START
+                    !>MGCAMB MOD START
 					if(MG_flag==0) then
-						call custom_sources_func(EV%CustomSources, tau, a, adotoa, grho, gpres,w_dark_energy_t, cs2_de, &
-							grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,grhonu_t, &
-							k, etak, ayprime(ix_etak), phi, phidot, sigma, sigmadot, &
-							dgrho, clxg,clxb,clxc,clxr,clxnu, dgrho_de/grhov_t, delta_p_b, &
-							dgq, qg, qr, dgq_de/grhov_t, vb, qgdot, qrdot, vbdot, &
-							dgpi, pig, pir, pigdot, pirdot, diff_rhopi, &
-							polter, polterdot, polterddot, octg, octgdot, E, Edot, &
-							opacity, dopacity, ddopacity, visibility, dvisibility, ddvisibility, exptau, &
-							tau0, State%tau_maxvis, EV%Kf,f_K)
+                        call custom_sources_func(EV%CustomSources, tau, a, adotoa, grho, gpres,w_dark_energy_t, cs2_de, &
+                            grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,grhonu_t, &
+                            k, etak, ayprime(ix_etak), phi, phidot, sigma, sigmadot, &
+                            dgrho, clxg,clxb,clxc,clxr,clxnu, dgrho_de/grhov_t, delta_p_b, &
+                            dgq, qg, qr, dgq_de/grhov_t, vb, qgdot, qrdot, vbdot, &
+                            dgpi, pig, pir, pigdot, pirdot, diff_rhopi, &
+                            polter, polterdot, polterddot, octg, octgdot, E, Edot, &
+                            opacity, dopacity, ddopacity, visibility, dvisibility, ddvisibility, exptau, &
+                            tau0, State%tau_maxvis, EV%Kf,f_K)
 					else
 						call custom_sources_func(EV%CustomSources, tau, a, adotoa, grho, gpres,w_MGDE, cs2_de, &
 							grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,grhonu_t, &
@@ -3400,13 +3388,12 @@
 
             ! dump cache into files
             call MGCAMB_dump_cache( a, mgcamb_cache )
-    end if
+        end if
         !< MGCAMB MOD END
 
     end if
 
     end subroutine derivs
-
 
 
 

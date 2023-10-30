@@ -1,7 +1,7 @@
 MGCobaya
 ===========
 ## Modified Growth with Cobaya 
-This is the official repository for the latest MGCAMB package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html).
+This is the official repository for the latest [MGCAMB](https://github.com/sfu-cosmo/MGCAMB) package to work with Cobaya. Specifically, it is an independent package of MGCAMB, and the Cobaya source along with other cosmological codes and data should be installed separately following the instructions on the [official Cobaya website](https://cobaya.readthedocs.io/en/latest/installation_cosmo.html).
 
 
 

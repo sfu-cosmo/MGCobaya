@@ -21,7 +21,7 @@
     !Nu_best: automatically use mixture which is fastest and most accurate
 
     integer, parameter :: max_Nu = 5 !Maximum number of neutrino species
-    integer, parameter :: max_transfer_redshifts = 150
+    integer, parameter :: max_transfer_redshifts = 256
 
     type TransferParams
         logical     ::  high_precision = .false.
@@ -58,7 +58,7 @@
         !Reionization settings - used if Reion%Reionization=.true.
         logical   :: AccurateReionization = .true.
         !Do you care about pecent level accuracy on EE signal from reionization?
-
+       
         !The following allow separate tweaking (all also affected by AccuracyBoost above)
 
         real(dl) :: TimeStepBoost = 1._dl !sampling timesteps
@@ -182,89 +182,90 @@
         logical :: Do21cm = .false.
         logical :: transfer_21cm_cl = .false.
         logical :: Log_lvalues  = .false. !useful for smooth results at very high L
-        logical :: use_cl_spline_template = .true.
-
+        logical :: use_cl_spline_template = .true.    
+        integer :: min_l_logl_sampling = 5000 ! increase to use linear sampling for longer
+    
         Type(TSourceWindowHolder), allocatable :: SourceWindows(:)
 
         Type(TCustomSourceParams) :: CustomSources
 
-		!>MGCAMB MOD START
-        integer ::  MG_flag   
-		real(dl)::  GRtrans  
-        integer :: pure_MG_flag  
-        integer :: alt_MG_flag 
-        integer ::  QSA_flag 
-        integer ::  CDM_flag 
-        integer :: muSigma_flag
-        integer :: mugamma_par 
-        real(dl):: B1
-        real(dl):: lambda1_2
-        real(dl):: B2
-        real(dl):: lambda2_2
-        real(dl):: ss
-        real(dl):: E11 
-        real(dl):: E22 
-        real(dl):: ga
-        real(dl):: nn
-        integer :: musigma_par 
-        real(dl):: mu0 
-        real(dl):: sigma0 
-        integer :: QR_par
-        real(dl):: MGQfix
-        real(dl):: MGRfix
-        real(dl):: Qnot
-        real(dl):: Rnot
-        real(dl):: sss
-        real(dl):: Linder_gamma
-        real(dl):: B0
-        real(dl):: beta_star  
-        real(dl):: a_star 
-        real(dl):: xi_star 
-        real(dl):: beta0
-        real(dl):: xi0
-        real(dl):: DilS
-        real(dl):: DilR
-        real(dl):: F_R0
-        real(dl):: FRn
-        integer :: DE_model  
-        real(dl):: w0DE 
-        real(dl):: waDE
-        logical :: MGDE_pert 
-        real(dl):: MGCAMB_Mu_idx_1
-        real(dl):: MGCAMB_Mu_idx_2
-        real(dl):: MGCAMB_Mu_idx_3
-        real(dl):: MGCAMB_Mu_idx_4
-        real(dl):: MGCAMB_Mu_idx_5
-        real(dl):: MGCAMB_Mu_idx_6
-        real(dl):: MGCAMB_Mu_idx_7
-        real(dl):: MGCAMB_Mu_idx_8
-        real(dl):: MGCAMB_Mu_idx_9
-        real(dl):: MGCAMB_Mu_idx_10
-        real(dl):: MGCAMB_Mu_idx_11
-        real(dl):: MGCAMB_Sigma_idx_1
-        real(dl):: MGCAMB_Sigma_idx_2
-        real(dl):: MGCAMB_Sigma_idx_3
-        real(dl):: MGCAMB_Sigma_idx_4
-        real(dl):: MGCAMB_Sigma_idx_5
-        real(dl):: MGCAMB_Sigma_idx_6
-        real(dl):: MGCAMB_Sigma_idx_7
-        real(dl):: MGCAMB_Sigma_idx_8
-        real(dl):: MGCAMB_Sigma_idx_9
-        real(dl):: MGCAMB_Sigma_idx_10
-        real(dl):: MGCAMB_Sigma_idx_11
-        real(dl):: Funcofw_1 
-        real(dl):: Funcofw_2 
-        real(dl):: Funcofw_3 
-        real(dl):: Funcofw_4 
-        real(dl):: Funcofw_5
-        real(dl):: Funcofw_6
-        real(dl):: Funcofw_7
-        real(dl):: Funcofw_8
-        real(dl):: Funcofw_9
-        real(dl):: Funcofw_10
-        real(dl):: Funcofw_11
-		!>MGCAMB MOD END
-
+        !--MGCAMB MOD START
+        logical :: MG_wrapped = .False.
+        integer :: MG_flag = 0
+		real(dl):: GRtrans = 0.001
+        integer :: pure_MG_flag = 1
+        integer :: alt_MG_flag = 1
+        integer :: QSA_flag = 1
+        integer :: CDM_flag = 1
+        integer :: muSigma_flag = 1
+        integer :: mugamma_par = 1
+        real(dl):: B1 = 1.333d0
+        real(dl):: lambda1_2  = 1000
+        real(dl):: B2 = 0.5
+        real(dl):: lambda2_2 = 1000
+        real(dl):: ss = 4
+        real(dl):: E11 = 1.0d0
+        real(dl):: E22 = 1.0d0
+        real(dl):: ga = 0.5
+        real(dl):: nn = 2
+		integer :: musigma_par = 1
+        real(dl):: mu0 = 0.d0
+		real(dl):: sigma0 = 0.d0
+        integer :: QR_par = 1
+        real(dl):: MGQfix = 1
+        real(dl):: MGRfix = 1
+        real(dl):: Qnot = 1.d0
+        real(dl):: Rnot= 1.d0
+        real(dl):: sss = 0
+		real(dl):: Linder_gamma = 0.545
+        real(dl):: B0 = 1.d-3
+        real(dl):: beta_star  = 1.0
+        real(dl):: a_star = 0.5 
+        real(dl):: xi_star = 1.d-3
+        real(dl):: beta0 = 1.d0
+        real(dl):: xi0 = 1.d-4
+        real(dl):: DilS = 0.24d0
+        real(dl):: DilR = 1.d0
+        real(dl):: F_R0 = 1.d-4
+        real(dl):: FRn = 1.d0
+        integer :: DE_model  = 0
+        real(dl):: w0DE = -1.d0
+        real(dl):: waDE = 0.d0
+        logical :: MGDE_pert = .False.
+        real(dl):: MGCAMB_Mu_idx_1 = 1.d0
+        real(dl):: MGCAMB_Mu_idx_2 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_3 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_4 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_5 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_6 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_7 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_8 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_9 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_10 = 1.0d0
+        real(dl):: MGCAMB_Mu_idx_11 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_1 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_2 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_3 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_4 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_5 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_6 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_7 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_8 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_9 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_10 = 1.0d0
+        real(dl):: MGCAMB_Sigma_idx_11 = 1.0d0
+        real(dl):: Funcofw_1 = 0.7d0
+        real(dl):: Funcofw_2 = 0.7d0
+        real(dl):: Funcofw_3 = 0.7d0
+        real(dl):: Funcofw_4 = 0.7d0
+        real(dl):: Funcofw_5= 0.7d0
+        real(dl):: Funcofw_6= 0.7d0
+        real(dl):: Funcofw_7= 0.7d0
+        real(dl):: Funcofw_8= 0.7d0
+        real(dl):: Funcofw_9= 0.7d0
+        real(dl):: Funcofw_10= 0.7d0
+        real(dl):: Funcofw_11= 0.7d0
+        !>MGCAMB MOD END
 
     contains
     procedure, nopass :: PythonClass => CAMBparams_PythonClass
@@ -397,7 +398,7 @@
         neff_massive_standard=0
     end if
     if (omnuh2_sterile>0) then
-        if (nnu<default_nnu) call MpiStop('nnu < 3.046 with massive sterile')
+        if (nnu<default_nnu) call MpiStop('nnu < 3.044 with massive sterile')
         this%Num_Nu_Massless = default_nnu - neff_massive_standard
         this%Num_Nu_Massive=this%Num_Nu_Massive+1
         this%Nu_mass_eigenstates=this%Nu_mass_eigenstates+1
