@@ -14,7 +14,7 @@ l_max: null
 # Use hankel module for Bessel transforms. For checking.
 use_hankel: False
 # Use Weyl potential
-use_Weyl: True
+use_Weyl: False
 # Approximate bessel integral as binned smooth C_L
 # against integrals of bessel in each bin.
 binned_bessels: True
