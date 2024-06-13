@@ -1,0 +1,3 @@
+[submodule "MGCAMB"]
+	path = MGCAMB
+	url = https://github.com/sfu-cosmo/MGCAMB.git
