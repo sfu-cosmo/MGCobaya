@@ -29,6 +29,8 @@ likelihood:
   planck_2018_lensing.clik: null
   des_y1.joint:
     python_path: /path/to/MGCobaya/des 
+    use_Weyl: True
+    
 params:
   logA:
     prior:

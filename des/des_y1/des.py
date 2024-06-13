@@ -57,10 +57,15 @@ from cobaya.likelihoods.base_classes import DataSetLikelihood
 from cobaya.log import LoggedError
 from cobaya.conventions import Const
 
+#added for tests
+import os
+
 # DES data types
 def_DES_types = ['xip', 'xim', 'gammat', 'wtheta']
 
 _spline = InterpolatedUnivariateSpline
+
+
 
 
 def get_def_cuts():  # pragma: no cover
@@ -187,16 +192,20 @@ class DES(DataSetLikelihood):
         self.indices = []
         self.used_indices = []
         self.used_items = []
+
         self.fullcov = np.loadtxt(ini.relativeFileName('cov_file'))
+
         ntheta = ini.int('num_theta_bins')
         self.theta_bins = np.loadtxt(ini.relativeFileName('theta_bins_file'))
         self.iintrinsic_alignment_model = ini.string('intrinsic_alignment_model')
         self.data_types = ini.string('data_types').split()
-        self.used_types = ini.list('used_data_types', self.data_types)
+        self.used_types = ini.list('used_data_types', self.data_types) #prescribed by corresponding DES class yaml files
+
         with open(ini.relativeFileName('data_selection'), encoding="utf-8") as f:
             header = f.readline()
             assert ('#  type bin1 bin2 theta_min theta_max' == header.strip())
             lines = f.readlines()
+        
         ranges = {}
         for tp in self.data_types:
             ranges[tp] = np.empty((6, 6), dtype=object)
@@ -205,6 +214,7 @@ class DES(DataSetLikelihood):
             if items[0] in self.used_types:
                 bin1, bin2 = [int(x) - 1 for x in items[1:3]]
                 ranges[items[0]][bin1][bin2] = [np.float64(x) for x in items[3:]]
+
         self.ranges = ranges
         self.nzbins = ini.int('num_z_bins')  # for lensing sources
         self.nwbins = ini.int('num_gal_bins', 0)  # for galaxies
@@ -214,7 +224,9 @@ class DES(DataSetLikelihood):
         self.data_arrays = []
         self.thetas = []
         for i, tp in enumerate(self.data_types):
+
             xi = np.loadtxt(ini.relativeFileName('measurements[%s]' % tp))
+
             bin1 = xi[:, 0].astype(int) - 1
             bin2 = xi[:, 1].astype(int) - 1
             tbin = xi[:, 2].astype(int) - 1
@@ -234,7 +246,9 @@ class DES(DataSetLikelihood):
                         self.thetas.append(self.theta_bins[ix])
                         self.used_indices.append(cov_ix)
                         self.used_items.append(self.indices[-1])
+              
                 cov_ix += 1
+
         nz_source = np.loadtxt(ini.relativeFileName('nz_file'))
         self.zmid = nz_source[:, 1]
         self.zbin_sp = []
@@ -249,6 +263,8 @@ class DES(DataSetLikelihood):
         # k_max actually computed, assumes extrapolated beyond that
         self.k_max = ini.float('kmax', 15)
 
+
+    #this is unused 
     def load_fits_data(self, filename, ranges=None):  # pragma: no cover
         # noinspection PyUnresolvedReferences
         import astropy.io.fits as fits
@@ -326,10 +342,14 @@ class DES(DataSetLikelihood):
             self.zbin_w_sp += [_spline(self.zmid, hdulist['NZ_LENS'].data.field(b + 3))]
         self.zmax = self.zmid[351]  # last non-zero
 
+
+    #to get corr functions from data
     def initialize_postload(self):
         self.covmat = self.fullcov[np.ix_(self.used_indices, self.used_indices)]
         self.covinv = np.linalg.inv(self.covmat)
         self.data_vector = self.make_vector(self.data_arrays)
+
+        #only for plotting at the end, unused
         self.errors = copy.deepcopy(self.data_arrays)
         cov_ix = 0
         for i, (type_ix, f1, f2, ix) in enumerate(self.indices):
@@ -396,26 +416,47 @@ class DES(DataSetLikelihood):
             self.zs = self.zmid[self.zmid <= self.zmax]
         # Interpolator z sampling
         assert self.zmax <= 5, "z max too large!"
-        self.zs_interp = np.linspace(0, self.zmax, 100)
 
+        self.zs_interp = np.linspace(0, self.zmax, 20)
+
+    #ZW:
     def get_requirements(self):
+
+        if self.use_Weyl:
+            if 'xip' in self.used_types or 'xim' in self.used_types:
+                get_weyl_weyl = True 
+            else:
+                get_weyl_weyl = False
+            if 'gammat' in self.used_types:
+                get_cross = True 
+            else:
+                get_cross = False  
+        else:
+            get_weyl_weyl = False   
+            get_cross = False 
+   
         return {
             "H0": None,
             "omegam": None,
             "Pk_interpolator": {
-                "z": self.zs_interp, "k_max": 15 * self.acc, "nonlinear": False,
+                "z": self.zs_interp, "k_max": 15 * self.acc, "nonlinear": True,
+                # "vars_pairs": ([("delta_tot", "delta_tot")] +
+                #                ([("Weyl", "Weyl")] if self.use_Weyl else []))},
                 "vars_pairs": ([("delta_tot", "delta_tot")] +
-                               ([("Weyl", "Weyl")] if self.use_Weyl else []))},
+                               ([("Weyl", "Weyl")] if get_weyl_weyl else []) +
+                               ([("delta_tot", "Weyl")] if get_cross else []))},
             "comoving_radial_distance": {"z": self.zs},
             "Hubble": {"z": self.zs}}
 
+    #ZW: add PKcross for cross-correlation 
     # noinspection PyUnboundLocalVariable
-    def get_theory(self, PKdelta, PKWeyl, bin_bias, shear_calibration_parameters,
+    def get_theory(self, PKdelta, PKWeyl, PKcross, bin_bias, shear_calibration_parameters,
                    intrinsic_alignment_A, intrinsic_alignment_alpha,
                    intrinsic_alignment_z0, wl_photoz_errors, lens_photoz_errors):
         h2 = (self.provider.get_param("H0") / 100) ** 2
         omegam = self.provider.get_param("omegam")
         chis = self.provider.get_comoving_radial_distance(self.zs)
+
         Hs = self.provider.get_Hubble(self.zs, units="1/Mpc")
         dchis = np.hstack(
             ((chis[1] + chis[0]) / 2, (chis[2:] - chis[:-2]) / 2, (chis[-1] - chis[-2])))
@@ -452,22 +493,31 @@ class DES(DataSetLikelihood):
                         wq_b[i] = np.dot(n_chi[i:], (1 - chi / chis[i:]) * dchis[i:])
                 wq[b] = wq_b - Alignment_z * n_chi
 
-            if PKWeyl is not None:
-                if 'gammat' in self.used_types:
-                    raise LoggedError(self.log, "DES currently only supports Weyl "
-                                                "potential for lensing only")
+            # if PKWeyl is not None:
+            if self.use_Weyl:
+                #ZW: commented to allow for gammat when using weyl
+                # if 'gammat' in self.used_types:
+                #     raise LoggedError(self.log, "DES currently only supports Weyl "
+                #                                 "potential for lensing only")
+
                 qs = chis * wq
+
             else:
                 qs = 3 * omegam * h2 * (1e5 / c) ** 2 * chis * (1 + self.zs) / 2 * wq
+
+        
+        #ell orders in some pattern
         ls_cl = np.hstack((np.arange(2., 100 - 4 / self.acc, 4 / self.acc),
                            np.exp(np.linspace(np.log(100.), np.log(self.l_max),
                                               int(50 * self.acc)))))
+        
         # Get the angular power spectra and transform back
         dchifac = dchis / chis ** 2
         if numba:
             ks = np.outer(ls_cl + 0.5, 1 / chis)
             tmp = PKdelta.P(self.zs, ks, grid=False)
             _limber_PK_terms(tmp, ks, dchifac, PKdelta.kmax)
+
         else:
             tmp = np.empty((ls_cl.shape[0], chis.shape[0]))
             weight = np.empty(chis.shape)
@@ -478,20 +528,46 @@ class DES(DataSetLikelihood):
                 weight[k >= PKdelta.kmax] = 0
                 tmp[ix, :] = weight * PKdelta.P(self.zs, k, grid=False)
 
-        if PKWeyl is not None:
+        #ZW
+        #if PKWeyl is not None:
+        if self.use_Weyl:
             if numba:
                 tmplens = PKWeyl.P(self.zs, ks, grid=False)
                 _limber_PK_terms(tmplens, ks, dchifac, PKWeyl.kmax)
             else:
-                tmplens = np.empty((ls_cl.shape[0], chis.shape[0]))
-                for ix, l in enumerate(ls_cl):
-                    k = (l + 0.5) / chis
-                    weight[:] = dchifac
-                    weight[k < 1e-4] = 0
-                    weight[k >= PKWeyl.kmax] = 0
-                    tmplens[ix, :] = weight * PKWeyl.P(self.zs, k, grid=False)
+                try:
+                    if 'xip' in self.used_types or 'xim' in self.used_types:
+                        tmplens = np.empty((ls_cl.shape[0], chis.shape[0]))
+                        for ix, l in enumerate(ls_cl):
+                            k = (l + 0.5) / chis
+                            weight[:] = dchifac
+                            weight[k < 1e-4] = 0
+                            weight[k >= PKWeyl.kmax] = 0
+                            tmplens[ix, :] = weight * PKWeyl.P(self.zs, k, grid=False)
+                    if 'gammat' in self.used_types:
+                        tmpcross = np.empty((ls_cl.shape[0], chis.shape[0]))
+                        for ix, l in enumerate(ls_cl):
+                            k = (l + 0.5) / chis
+                            weight[:] = dchifac
+                            weight[k < 1e-4] = 0
+                            weight[k >= PKcross.kmax] = 0
+                            tmpcross[ix, :] = - weight * PKcross.P(self.zs, k, grid=False)  
+
+                except:
+                    raise LoggedError(self.log, "not using the correct type for DES observable")         
         else:
-            tmplens = tmp
+            try:
+                # if 'xip' in self.used_types or 'xim' in self.used_types:
+                #     tmplens = tmp
+                # if 'gammat' in self.used_types:
+                #     tmpcross = tmp
+                tmplens = None
+                tmpcross = None
+
+            except:
+                raise LoggedError(self.log, "not using the correct type for DES observable")                  
+
+        #nzbins for weyl, nwbins for gals
         corrs_th_p = np.empty((self.nzbins, self.nzbins), dtype=object)
         corrs_th_m = np.empty((self.nzbins, self.nzbins), dtype=object)
         corrs_th_w = np.empty((self.nwbins, self.nwbins), dtype=object)
@@ -522,6 +598,7 @@ class DES(DataSetLikelihood):
                     corrs_th_w[f1, f2] = self.hankel0.transform(cl,
                                                                 self.theta_bins_radians,
                                                                 ret_err=False) / 2 / np.pi
+        #ZW:
         else:
             j0s, j2s, j4s = self.bessel_cache
             ls_bessel = self.ls_bessel
@@ -534,21 +611,51 @@ class DES(DataSetLikelihood):
                     corrs_th_m[f1, f2] = np.dot(cl, j4s) * fac
             if 'gammat' in self.used_types:
                 for (f1, f2) in self.bin_pairs[self.data_types.index('gammat')]:
-                    cl = _spline(ls_cl, np.dot(tmp, qgal[f1] * qs[f2]))(ls_bessel)
+                    #cl = _spline(ls_cl, np.dot(tmp, qgal[f1] * qs[f2]))(ls_bessel)
+                    cl = _spline(ls_cl, np.dot(tmpcross, qgal[f1] * qs[f2]))(ls_bessel)
                     corrs_th_t[f1, f2] = np.dot(cl, j2s) * (
                             1 + shear_calibration_parameters[f2])
             if 'wtheta' in self.used_types:
                 for (f1, f2) in self.bin_pairs[self.data_types.index('wtheta')]:
                     cl = _spline(ls_cl, np.dot(tmp, qgal[f1] * qgal[f2]))(ls_bessel)
-                    corrs_th_w[f1, f2] = np.dot(cl, j0s)
+                    corrs_th_w[f1, f2] = np.dot(cl, j0s)    
+
         return [corrs_th_p, corrs_th_m, corrs_th_t, corrs_th_w]
 
+    #to format vectors ahead of chi2
     def make_vector(self, arrays):
         nused = len(self.used_items)
         data = np.empty(nused)
         for i, (type_ix, f1, f2, theta_ix) in enumerate(self.used_items):
             data[i] = arrays[type_ix][f1, f2][theta_ix]
         return data
+
+    #for mock data outputs
+    def make_mock_data(self, arrays = None, type = None):
+
+        data = []
+        case_wheta = 3
+        case_xipm = 0
+        case_gammat = 2
+        for i, (type_ix, f1, f2, theta_ix) in enumerate(self.indices):
+            #placeholder to remove the loop for type_ix, for each case f1 and f2 may differ
+            if type == "wtheta":
+                if type_ix == case_wheta: 
+                #wtheta has no data with cross redshift bins
+                    if f1 == f2:
+                        mock_array = [f1+1, f2+1, theta_ix+1, arrays[f1, f2][theta_ix]]
+                        data.append(mock_array)
+            elif type == "gammat":
+                if type_ix == case_gammat:
+                    mock_array = [f1+1, f2+1, theta_ix+1, arrays[f1, f2][theta_ix]]
+                    data.append(mock_array)
+            else:
+                #case 0(p) and 1(m) are the same
+                if type_ix == case_xipm: 
+                    mock_array = [f1+1, f2+1, theta_ix+1, arrays[f1, f2][theta_ix]]
+                    data.append(mock_array)
+        data = np.array(data)
+        return data    
 
     def make_thetas(self):
         nused = len(self.used_items)
@@ -566,14 +673,28 @@ class DES(DataSetLikelihood):
         else:
             return chi2
 
+    #ZW:
     def logp(self, **params_values):
-        PKdelta = self.provider.get_Pk_interpolator(("delta_tot", "delta_tot"), nonlinear=False,
+        PKdelta = self.provider.get_Pk_interpolator(("delta_tot", "delta_tot"), nonlinear=True,
                                                     extrap_kmax=3000 * self.acc)
         if self.use_Weyl:
-            PKWeyl = self.provider.get_Pk_interpolator(("Weyl", "Weyl"), nonlinear=False,
-                                                       extrap_kmax=3000 * self.acc)
+            try:
+                if 'xip' in self.used_types or 'xim' in self.used_types:
+                    PKWeyl = self.provider.get_Pk_interpolator(("Weyl", "Weyl"), nonlinear=True,
+                                                            extrap_kmax=3000 * self.acc)
+                else:
+                    PKWeyl = None
+
+                if 'gammat' in self.used_types:
+                    PKcross = self.provider.get_Pk_interpolator(("delta_tot", "Weyl"), nonlinear=True, extrap_kmax=3000 * self.acc)
+                else:
+                    PKcross = None
+            except:
+                raise LoggedError(self.log, "not using the correct type for DES observable")      
+      
         else:
             PKWeyl = None
+            PKcross = None
 
         wl_photoz_errors = [
             params_values.get(p, None) for p in
@@ -588,7 +709,7 @@ class DES(DataSetLikelihood):
             params_values.get(p, None) for p in
             ['DES_m1', 'DES_m2', 'DES_m3', 'DES_m4']]
         theory = self.get_theory(
-            PKdelta, PKWeyl,
+            PKdelta, PKWeyl, PKcross,
             bin_bias=bin_bias,
             wl_photoz_errors=wl_photoz_errors,
             lens_photoz_errors=lens_photoz_errors,
