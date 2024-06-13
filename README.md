@@ -6,19 +6,15 @@ This is the official repository for the latest [MGCAMB](https://github.com/sfu-c
 
 
 ## How to install:
-To install the packgage, you need: 
+To install the packgage, you need to do: 
 
 ```bash
-git clone https://github.com/sfu-cosmo/MGCobaya.git
+git clone --recursive https://github.com/sfu-cosmo/MGCobaya.git
 cd MGCobaya/MGCAMB
-python setup.py build
 ```
+then follow the instructions of the Python installation of MGCAMB, which are described at the [repository](https://github.com/sfu-cosmo/MGCAMB/tree/NL_ext).
 
-Besides, since there is no MG counterpart of Halofit, nonlinear corrections should be turned off when running Cobaya. You need to replace some DES 1YR dataset files with:
-```bash
-cp /path/to/MGCobaya/des/des_data/*  /path/to/packages/data/des_data/
-```
-where /path/to/packages is the default directory you install all other cosmological codes and data working for Cobaya. 
+Note that the new version of MGCAMB and MGCobaya include the extension to nonlinear scales, thus no need to turn off the nonlinear corrections as in previous versions. 
 
 Moreover, if you want to use DES likelihoods, make sure to set the path under the block of DES likelihoods in your_input.yaml:
 ```bash
@@ -44,12 +40,11 @@ If you use MGCobaya for your scientific work, please cite the following papers:
 
 * *New MGCAMB tests of gravity with CosmoMC and Cobaya*\
     Zhuangfei Wang, Seyed Hamidreza Mirpoorian, Levon Pogosian, Alessandra Silvestri, Gong-Bo Zhao\
-    [arXiv:2305.05667 [astro-ph.CO]](https://arxiv.org/abs/2305.05667)
-
+    [arXiv:2305.05667 [astro-ph.CO]](https://arxiv.org/abs/2305.05667), [JCAP 08 (2023) 038](https://iopscience.iop.org/article/10.1088/1475-7516/2023/08/038)
 
 * *MGCAMB with massive neutrinos and dynamical dark energy*   
     Alex Zucca, Levon Pogosian, Alessandra Silvestri, and Gong-Bo Zhao  
-    [arXiv:1901.05956 [astro-ph.CO]](https://arxiv.org/abs/1901.05956)
+    [arXiv:1901.05956 [astro-ph.CO]](https://arxiv.org/abs/1901.05956), [JCAP 05 (2019) 001](https://iopscience.iop.org/article/10.1088/1475-7516/2019/05/001)
     
     
 * *Testing Gravity with CAMB and CosmoMC*  
@@ -63,6 +58,18 @@ If you use MGCobaya for your scientific work, please cite the following papers:
 
 
 as well as the original CAMB [paper](http://arxiv.org/abs/astro-ph/9911177) and Cobaya [paper](https://arxiv.org/abs/2005.05290).
+
+If you use the nonlinear feature of MGCAMB, please also cite the following papers:
+
+* *On the road to percent accuracy IV: ReACT -- computing the non-linear power spectrum beyond ΛCDM*  
+    Benjamin Bose, Matteo Cataneo, Tilman Tröster, Qianli Xia, Catherine Heymans, Lucas Lombriser  
+    [arXiv:2005.12184 [astro-ph.CO]](https://arxiv.org/abs/2005.12184), [Mon.Not.Roy.Astron.Soc. 498 (2020) 4, 4650-4662](https://academic.oup.com/mnras/article/498/4/4650/5902405)
+
+* *Fast and accurate predictions of the nonlinear matter power spectrum for general models of Dark Energy and Modified Gravity*  
+    B. Bose, M. Tsedrik, J. Kennedy, L. Lombriser, A. Pourtsidou, A. Taylor
+    [arXiv:2210.01094 [astro-ph.CO]](https://arxiv.org/abs/2210.01094), [Mon.Not.Roy.Astron.Soc. 519 (2023) 3, 4780–4800](https://academic.oup.com/mnras/article/519/3/4780/6979823)
+
+and the [code](https://github.com/nebblu/ACTio-ReACTio).
 
 ## Authors List
 Main Developers:
