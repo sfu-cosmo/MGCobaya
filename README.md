@@ -10,7 +10,10 @@ To install the packgage, you need to do:
 
 ```bash
 git clone --recursive https://github.com/sfu-cosmo/MGCobaya.git
-cd MGCobaya/MGCAMB
+cd MGCobaya
+git checkout NL_ext
+git submodule update --init --recursive
+cd MGCAMB
 ```
 then follow the instructions of the Python installation of MGCAMB, which are described at the [repository](https://github.com/sfu-cosmo/MGCAMB/tree/NL_ext).
 
