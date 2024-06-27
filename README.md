@@ -17,7 +17,10 @@ cd MGCAMB
 ```
 then follow the instructions of the Python installation of MGCAMB, which are described at the [repository](https://github.com/sfu-cosmo/MGCAMB/tree/NL_ext).
 
-Note that the new version of MGCAMB and MGCobaya include the extension to nonlinear scales, thus no need to turn off the nonlinear corrections as in previous versions. 
+Please note:
+- The new version of MGCAMB and MGCobaya include the extension to nonlinear scales, thus no need to turn off the nonlinear corrections as in previous versions. 
+- The input node `Funcofw_11` of $\Omega_X$ (z=0) will be replaced by $\Omega_{DE}$ internally in the code, thus no need to vary this parameter in the input file. 
+
 
 Moreover, if you want to use DES likelihoods, make sure to set the path under the block of DES likelihoods in your_input.yaml:
 ```bash
